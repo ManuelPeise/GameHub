@@ -1,0 +1,76 @@
+# =====================================================================
+# GameHub – Zeilenenden und Dateitypen
+# Im Repository liegen alle Textdateien mit LF. Diese Datei gilt für
+# jeden Rechner, unabhängig von core.autocrlf.
+# =====================================================================
+
+# Standard: Git erkennt Textdateien selbst und speichert sie mit LF,
+# auch beim Auschecken unter Windows.
+* text=auto eol=lf
+
+# ---------------------------------------------------------------------
+# Ausnahmen, die unter Windows CRLF brauchen
+# ---------------------------------------------------------------------
+*.cmd   text eol=crlf
+*.bat   text eol=crlf
+*.sln   text eol=crlf
+
+# ---------------------------------------------------------------------
+# Ausdrücklich Text mit LF (Shell-Skripte laufen in Linux-Containern)
+# ---------------------------------------------------------------------
+*.sh          text eol=lf
+*.ps1         text eol=lf
+*.cs          text eol=lf diff=csharp
+*.csproj      text eol=lf
+*.props       text eol=lf
+*.targets     text eol=lf
+*.slnx        text eol=lf
+*.json        text eol=lf
+*.yaml        text eol=lf
+*.yml         text eol=lf
+*.md          text eol=lf diff=markdown
+*.ts          text eol=lf
+*.tsx         text eol=lf
+*.js          text eol=lf
+*.css         text eol=lf
+*.html        text eol=lf
+*.sql         text eol=lf
+*.env.example text eol=lf
+Dockerfile    text eol=lf
+.editorconfig text eol=lf
+.gitignore    text eol=lf
+.gitattributes text eol=lf
+
+# ---------------------------------------------------------------------
+# Binärdateien: nie konvertieren, nie zeilenweise vergleichen
+# ---------------------------------------------------------------------
+*.png    binary
+*.jpg    binary
+*.jpeg   binary
+*.gif    binary
+*.ico    binary
+*.webp   binary
+*.woff   binary
+*.woff2  binary
+*.ttf    binary
+*.otf    binary
+*.pdf    binary
+*.zip    binary
+*.dll    binary
+*.exe    binary
+*.pfx    binary
+*.dump   binary
+
+# Unity (Ausblick): Assets und Szenen als Text, große Binärdateien binär
+*.unity  text eol=lf merge=unityyamlmerge
+*.prefab text eol=lf merge=unityyamlmerge
+*.asset  text eol=lf merge=unityyamlmerge
+*.meta   text eol=lf
+*.fbx    binary
+*.glb    binary
+*.wav    binary
+*.mp3    binary
+*.ogg    binary
+
+# Generierte Lockfiles nicht im Diff aufblähen
+package-lock.json -diff

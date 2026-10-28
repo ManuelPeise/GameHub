@@ -1,0 +1,137 @@
+# =====================================================================
+# GameHub – .gitignore
+# Bereiche: sources/ (.NET, React), docker/ (Betrieb), user-stories/
+# =====================================================================
+
+# ---------------------------------------------------------------------
+# Geheimnisse und lokale Konfiguration – niemals einchecken
+# ---------------------------------------------------------------------
+# Echte Umgebungsdateien; Vorlagen (*.env.example) bleiben versioniert
+*.env
+.env
+.env.*
+!*.env.example
+!.env.example
+
+# Lokale appsettings-Überschreibungen (Werte gehören in User Secrets / Variablen)
+appsettings.*.local.json
+appsettings.Local.json
+
+# Schlüssel und Zertifikate
+*.pfx
+*.p12
+*.pem
+*.key
+*.snk
+
+# ---------------------------------------------------------------------
+# .NET / Visual Studio / Rider
+# ---------------------------------------------------------------------
+[Bb]in/
+[Oo]bj/
+[Ll]og/
+[Ll]ogs/
+artifacts/
+publish/
+*.user
+*.userosscache
+*.suo
+*.sln.docstates
+*.rsuser
+.vs/
+.idea/
+*.DotSettings.user
+_ReSharper*/
+*.[Rr]e[Ss]harper
+
+# Test- und Coverage-Ergebnisse
+[Tt]est[Rr]esult*/
+TestResults/
+coverage/
+*.coverage
+*.coveragexml
+coverage*.json
+coverage*.xml
+*.trx
+
+# NuGet
+*.nupkg
+*.snupkg
+**/[Pp]ackages/*
+!**/[Pp]ackages/build/
+.nuget/
+
+# EF Core: Migrationsbundles (werden im Deployment erzeugt)
+efbundle
+efbundle.exe
+
+# ---------------------------------------------------------------------
+# Node / React / Vite (sources/web/)
+# ---------------------------------------------------------------------
+node_modules/
+dist/
+dist-ssr/
+.vite/
+*.tsbuildinfo
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+.eslintcache
+.stylelintcache
+
+# Playwright
+playwright-report/
+blob-report/
+test-results/
+playwright/.cache/
+
+# ---------------------------------------------------------------------
+# Docker / Betrieb (docker/)
+# ---------------------------------------------------------------------
+# Lokale Datenbank- und Backup-Daten, falls als Bind-Mount im Repo angelegt
+docker/data/
+docker/backups/
+docker/volumes/
+*.dump
+*.backup
+*.sql.gz
+
+# Compose-Overrides für lokale Experimente
+compose.override.yaml
+docker-compose.override.yml
+
+# ---------------------------------------------------------------------
+# Unity (Ausblick: sources/clients/quiz-unity/)
+# ---------------------------------------------------------------------
+sources/clients/**/[Ll]ibrary/
+sources/clients/**/[Tt]emp/
+sources/clients/**/[Bb]uild/
+sources/clients/**/[Bb]uilds/
+sources/clients/**/[Uu]ser[Ss]ettings/
+sources/clients/**/[Mm]emoryCaptures/
+sources/clients/**/*.csproj
+sources/clients/**/*.sln
+
+# ---------------------------------------------------------------------
+# Editoren und Betriebssysteme
+# ---------------------------------------------------------------------
+.vscode/*
+!.vscode/settings.json
+!.vscode/extensions.json
+!.vscode/launch.json
+!.vscode/tasks.json
+*.swp
+*~
+.DS_Store
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# ---------------------------------------------------------------------
+# Sonstiges
+# ---------------------------------------------------------------------
+*.log
+*.tmp
+*.bak
