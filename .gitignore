@@ -1,6 +1,6 @@
 # =====================================================================
 # GameHub – .gitignore
-# Bereiche: sources/ (.NET, React), docker/ (Betrieb), user-stories/
+# Bereiche: sources/ (.NET, React), docker/ (Betrieb); user-stories/ bleibt lokal
 # =====================================================================
 
 # ---------------------------------------------------------------------
@@ -23,6 +23,11 @@ appsettings.Local.json
 *.pem
 *.key
 *.snk
+
+# ---------------------------------------------------------------------
+# Lokale Projektunterlagen (nicht versioniert)
+# ---------------------------------------------------------------------
+/user-stories/
 
 # ---------------------------------------------------------------------
 # .NET / Visual Studio / Rider
