@@ -2,6 +2,7 @@ import React from "react";
 import { sendRequest } from "../hooks/apiClient";
 import { useStatefulApi } from "../hooks/useStatefulApi";
 import { accountUrls, pagePaths, roleNames, type CurrentUserResponse } from "../api/account";
+import { sessionPagePaths } from "../api/sessions";
 import "./account/AccountPages.css";
 
 /** Start page: shows the signed-in user, otherwise links to login and registration. */
@@ -41,6 +42,7 @@ const HomePage: React.FC = () => {
             </button>
           </div>
           <p className="account-links">
+            <a href={sessionPagePaths.newSession}>Neue Partie</a>
             <a href={pagePaths.deleteAccount}>Konto löschen</a>
           </p>
         </>

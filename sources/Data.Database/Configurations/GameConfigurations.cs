@@ -10,6 +10,7 @@ internal sealed class GameSessionConfiguration : IEntityTypeConfiguration<GameSe
 {
     /// <summary>Partial unique index: one open singleplayer session per owner and game type.</summary>
     public const string OneOpenSingleplayerSessionIndex = "IX_GameSession_OneOpenSingleplayerPerOwnerAndGame";
+    public const string InviteCodeIndex = "IX_GameSession_InviteCode";
 
     public void Configure(EntityTypeBuilder<GameSession> builder)
     {
@@ -18,6 +19,7 @@ internal sealed class GameSessionConfiguration : IEntityTypeConfiguration<GameSe
         builder.HasKey(session => session.Id);
         builder.Property(session => session.Id).ValueGeneratedNever();
         builder.Property(session => session.GameType).HasMaxLength(32).IsRequired();
+        builder.Property(session => session.InviteCode).HasMaxLength(16);
         builder.Property(session => session.Mode).HasConversion<string>().HasMaxLength(16);
         builder.Property(session => session.Status).HasConversion<string>().HasMaxLength(16);
         builder.Property(session => session.StateJson).HasColumnType("jsonb").IsRequired();
@@ -37,6 +39,11 @@ internal sealed class GameSessionConfiguration : IEntityTypeConfiguration<GameSe
             .HasDatabaseName(OneOpenSingleplayerSessionIndex)
             .IsUnique()
             .HasFilter($"\"Mode\" = '{nameof(GameMode.Singleplayer)}' AND \"Status\" IN ('{nameof(SessionStatus.Running)}', '{nameof(SessionStatus.Paused)}')");
+
+        builder.HasIndex(session => session.InviteCode)
+            .HasDatabaseName(InviteCodeIndex)
+            .IsUnique()
+            .HasFilter("\"InviteCode\" IS NOT NULL");
 
         // Cleanup job: inactive paused sessions.
         builder.HasIndex(session => new { session.Status, session.LastActivityAt });

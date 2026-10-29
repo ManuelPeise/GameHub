@@ -194,6 +194,10 @@ namespace Data.Database.Migrations
                         .HasMaxLength(32)
                         .HasColumnType("character varying(32)");
 
+                    b.Property<string>("InviteCode")
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)");
+
                     b.Property<DateTimeOffset>("LastActivityAt")
                         .HasColumnType("timestamp with time zone");
 
@@ -225,6 +229,11 @@ namespace Data.Database.Migrations
                         .HasColumnType("timestamp with time zone");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("InviteCode")
+                        .IsUnique()
+                        .HasDatabaseName("IX_GameSession_InviteCode")
+                        .HasFilter("\"InviteCode\" IS NOT NULL");
 
                     b.HasIndex("OwnerUserId", "GameType")
                         .IsUnique()

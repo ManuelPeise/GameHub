@@ -7,6 +7,8 @@ public sealed record SeatSnapshot(
     Guid Id,
     int Order,
     SeatKind Kind,
+    string DisplayName,
+    string? Symbol,
     Guid? UserId,
     SeatConnectionStatus ConnectionStatus,
     string? AiDifficulty,
@@ -18,12 +20,57 @@ public sealed record SessionSnapshot(
     string GameType,
     GameMode Mode,
     SessionStatus Status,
+    Guid OwnerUserId,
+    string? InviteCode,
     Guid? CurrentSeatId,
     string StateJson,
     int StateVersion,
     long RngSeed,
     int LastSequence,
     IReadOnlyList<SeatSnapshot> Seats);
+
+/// <summary>Seat values used when creating or extending a session.</summary>
+public sealed record SeatCreateWrite(
+    Guid Id,
+    int Order,
+    SeatKind Kind,
+    string DisplayName,
+    string? Symbol,
+    Guid? UserId,
+    string? AiDifficulty,
+    string? AiStrategyVersion,
+    SeatConnectionStatus ConnectionStatus,
+    DateTimeOffset? DisconnectedAt);
+
+/// <summary>All values for creating a session and its initial seats in one transaction.</summary>
+public sealed record SessionCreateWrite(
+    Guid Id,
+    string GameType,
+    GameMode Mode,
+    SessionStatus Status,
+    Guid OwnerUserId,
+    string? InviteCode,
+    Guid? CurrentSeatId,
+    string StateJson,
+    int StateVersion,
+    long RngSeed,
+    DateTimeOffset CreatedAt,
+    IReadOnlyList<SeatCreateWrite> Seats);
+
+/// <summary>Optimistic-lock write for adding one seat in a lobby.</summary>
+public sealed record SeatAddWrite(
+    Guid SessionId,
+    int ExpectedVersion,
+    SeatCreateWrite Seat,
+    DateTimeOffset UpdatedAt);
+
+/// <summary>Optimistic-lock write for switching a lobby to running state.</summary>
+public sealed record SessionStartWrite(
+    Guid SessionId,
+    int ExpectedVersion,
+    Guid? CurrentSeatId,
+    string StateJson,
+    DateTimeOffset UpdatedAt);
 
 /// <summary>One entry of the append-only move log.</summary>
 public sealed record GameActionRecord(

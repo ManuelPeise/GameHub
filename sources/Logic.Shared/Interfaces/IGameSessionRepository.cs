@@ -7,6 +7,16 @@ public interface IGameSessionRepository
 {
     Task<SessionSnapshot?> GetAsync(Guid sessionId, CancellationToken cancellationToken);
 
+    Task<SessionSnapshot?> FindByInviteCodeAsync(string inviteCode, CancellationToken cancellationToken);
+
+    Task<SessionSnapshot?> FindOpenSingleplayerAsync(Guid ownerUserId, string gameType, CancellationToken cancellationToken);
+
+    Task<bool> CreateSessionAsync(SessionCreateWrite write, CancellationToken cancellationToken);
+
+    Task<bool> AddSeatAsync(SeatAddWrite write, CancellationToken cancellationToken);
+
+    Task<bool> StartSessionAsync(SessionStartWrite write, CancellationToken cancellationToken);
+
     /// <summary>
     /// Appends the action to the move log and stores the new state with version + 1.
     /// Returns false (and writes nothing) if another action was stored in the meantime.

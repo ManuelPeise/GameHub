@@ -71,6 +71,18 @@ public sealed class GameModelTests : IDisposable
     }
 
     [Xunit.Fact]
+    public void GameSession_InviteCode_IsUniqueWhenPresent()
+    {
+        var index = Xunit.Assert.Single(
+            Entity<GameSession>().GetIndexes(),
+            candidate => candidate.GetDatabaseName() == "IX_GameSession_InviteCode");
+
+        Xunit.Assert.True(index.IsUnique);
+        Xunit.Assert.Equal([nameof(GameSession.InviteCode)], index.Properties.Select(property => property.Name));
+        Xunit.Assert.Equal("\"InviteCode\" IS NOT NULL", index.GetFilter());
+    }
+
+    [Xunit.Fact]
     public void GameSession_StateVersion_IsConcurrencyToken()
     {
         Xunit.Assert.True(Entity<GameSession>().FindProperty(nameof(GameSession.StateVersion))!.IsConcurrencyToken);

@@ -52,6 +52,7 @@ builder.Services.AddSingleton<ReplayService>();
 builder.Services.AddSingleton<IGameEventPublisher, NullGameEventPublisher>();
 builder.Services.AddGameSessionStore();
 builder.Services.AddScoped<SubmitActionHandler>();
+builder.Services.AddScoped<SessionLifecycleLogic>();
 builder.Services.AddScoped<AiTurnRunner>();
 builder.Services.AddHostedService<AiTurnWorker>();
 
@@ -88,6 +89,7 @@ app.UseAuthorization();
 app.MapDefaultEndpoints();
 app.MapAccountEndpoints();
 app.MapAdminEndpoints();
+app.MapGameSessionEndpoints();
 
 // Reachable from Web.App through the Vite proxy as /api/info.
 app.MapGet("/api/info", (IAppSettings settings) => Results.Ok(new

@@ -14,6 +14,9 @@ public sealed class GameSession
 
     public SessionStatus Status { get; set; }
 
+    /// <summary>Invite code for multiplayer lobbies; null for singleplayer and started rematches.</summary>
+    public string? InviteCode { get; set; }
+
     /// <summary>
     /// User who created the session (the human player in singleplayer, the host in multiplayer).
     /// Used for the rule "at most one open singleplayer session per player and game type".

@@ -16,28 +16,157 @@ public sealed class GameSessionRepository(GameDbContext database) : IGameSession
             .Include(s => s.Seats)
             .FirstOrDefaultAsync(s => s.Id == sessionId, cancellationToken)
             .ConfigureAwait(false);
-        if (session is null)
+        return session is null ? null : await ToSnapshotAsync(session, cancellationToken).ConfigureAwait(false);
+    }
+
+    public async Task<SessionSnapshot?> FindByInviteCodeAsync(string inviteCode, CancellationToken cancellationToken)
+    {
+        var normalized = inviteCode.Trim().ToUpperInvariant();
+        var session = await database.GameSessions.AsNoTracking()
+            .Include(s => s.Seats)
+            .FirstOrDefaultAsync(s => s.InviteCode == normalized, cancellationToken)
+            .ConfigureAwait(false);
+        return session is null ? null : await ToSnapshotAsync(session, cancellationToken).ConfigureAwait(false);
+    }
+
+    public async Task<SessionSnapshot?> FindOpenSingleplayerAsync(Guid ownerUserId, string gameType, CancellationToken cancellationToken)
+    {
+        var session = await database.GameSessions.AsNoTracking()
+            .Include(s => s.Seats)
+            .FirstOrDefaultAsync(
+                s => s.OwnerUserId == ownerUserId
+                    && s.GameType == gameType
+                    && s.Mode == GameMode.Singleplayer
+                    && (s.Status == SessionStatus.Running || s.Status == SessionStatus.Paused),
+                cancellationToken)
+            .ConfigureAwait(false);
+        return session is null ? null : await ToSnapshotAsync(session, cancellationToken).ConfigureAwait(false);
+    }
+
+    public async Task<bool> CreateSessionAsync(SessionCreateWrite write, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(write);
+
+        database.GameSessions.Add(new GameSession
         {
-            return null;
+            Id = write.Id,
+            GameType = write.GameType,
+            Mode = write.Mode,
+            Status = write.Status,
+            OwnerUserId = write.OwnerUserId,
+            InviteCode = write.InviteCode,
+            CurrentSeatId = write.CurrentSeatId,
+            StateJson = write.StateJson,
+            StateVersion = write.StateVersion,
+            RngSeed = write.RngSeed,
+            CreatedAt = write.CreatedAt,
+            UpdatedAt = write.CreatedAt,
+            LastActivityAt = write.CreatedAt,
+        });
+
+        foreach (var seat in write.Seats)
+        {
+            database.Seats.Add(new Seat
+            {
+                Id = seat.Id,
+                SessionId = write.Id,
+                Order = seat.Order,
+                Kind = seat.Kind,
+                DisplayName = seat.DisplayName,
+                Symbol = seat.Symbol,
+                UserId = seat.UserId,
+                AiDifficulty = seat.AiDifficulty,
+                AiStrategyVersion = seat.AiStrategyVersion,
+                ConnectionStatus = seat.ConnectionStatus,
+                DisconnectedAt = seat.DisconnectedAt,
+            });
         }
 
-        var lastSequence = await database.GameActions
-            .Where(a => a.SessionId == sessionId)
-            .MaxAsync(a => (int?)a.Sequence, cancellationToken)
-            .ConfigureAwait(false) ?? 0;
+        try
+        {
+            await database.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+            return true;
+        }
+        catch (DbUpdateException)
+        {
+            database.ChangeTracker.Clear();
+            return false;
+        }
+    }
 
-        return new SessionSnapshot(
-            session.Id,
-            session.GameType,
-            session.Mode,
-            session.Status,
-            session.CurrentSeatId,
-            session.StateJson,
-            session.StateVersion,
-            session.RngSeed,
-            lastSequence,
-            [.. session.Seats.OrderBy(s => s.Order).Select(s =>
-                new SeatSnapshot(s.Id, s.Order, s.Kind, s.UserId, s.ConnectionStatus, s.AiDifficulty, s.AiStrategyVersion))]);
+    public async Task<bool> AddSeatAsync(SeatAddWrite write, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(write);
+
+        var session = await database.GameSessions
+            .FirstOrDefaultAsync(s => s.Id == write.SessionId, cancellationToken)
+            .ConfigureAwait(false);
+        if (session is null || session.StateVersion != write.ExpectedVersion)
+        {
+            return false;
+        }
+
+        database.Seats.Add(new Seat
+        {
+            Id = write.Seat.Id,
+            SessionId = write.SessionId,
+            Order = write.Seat.Order,
+            Kind = write.Seat.Kind,
+            DisplayName = write.Seat.DisplayName,
+            Symbol = write.Seat.Symbol,
+            UserId = write.Seat.UserId,
+            AiDifficulty = write.Seat.AiDifficulty,
+            AiStrategyVersion = write.Seat.AiStrategyVersion,
+            ConnectionStatus = write.Seat.ConnectionStatus,
+            DisconnectedAt = write.Seat.DisconnectedAt,
+        });
+
+        session.StateVersion = write.ExpectedVersion + 1;
+        session.UpdatedAt = write.UpdatedAt;
+        session.LastActivityAt = write.UpdatedAt;
+
+        try
+        {
+            await database.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+            return true;
+        }
+        catch (DbUpdateException)
+        {
+            database.ChangeTracker.Clear();
+            return false;
+        }
+    }
+
+    public async Task<bool> StartSessionAsync(SessionStartWrite write, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(write);
+
+        var session = await database.GameSessions
+            .FirstOrDefaultAsync(s => s.Id == write.SessionId, cancellationToken)
+            .ConfigureAwait(false);
+        if (session is null || session.StateVersion != write.ExpectedVersion || session.Status != SessionStatus.Lobby)
+        {
+            return false;
+        }
+
+        session.Status = SessionStatus.Running;
+        session.CurrentSeatId = write.CurrentSeatId;
+        session.StateJson = write.StateJson;
+        session.StateVersion = write.ExpectedVersion + 1;
+        session.InviteCode = null;
+        session.UpdatedAt = write.UpdatedAt;
+        session.LastActivityAt = write.UpdatedAt;
+
+        try
+        {
+            await database.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+            return true;
+        }
+        catch (DbUpdateException)
+        {
+            database.ChangeTracker.Clear();
+            return false;
+        }
     }
 
     public async Task<bool> SaveActionAsync(ActionWrite write, CancellationToken cancellationToken)
@@ -117,4 +246,36 @@ public sealed class GameSessionRepository(GameDbContext database) : IGameSession
             .Distinct()
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
+
+    private async Task<SessionSnapshot> ToSnapshotAsync(GameSession session, CancellationToken cancellationToken)
+    {
+        var lastSequence = await database.GameActions.AsNoTracking()
+            .Where(a => a.SessionId == session.Id)
+            .MaxAsync(a => (int?)a.Sequence, cancellationToken)
+            .ConfigureAwait(false) ?? 0;
+
+        return new SessionSnapshot(
+            session.Id,
+            session.GameType,
+            session.Mode,
+            session.Status,
+            session.OwnerUserId,
+            session.InviteCode,
+            session.CurrentSeatId,
+            session.StateJson,
+            session.StateVersion,
+            session.RngSeed,
+            lastSequence,
+            [.. session.Seats.OrderBy(s => s.Order).Select(s =>
+                new SeatSnapshot(
+                    s.Id,
+                    s.Order,
+                    s.Kind,
+                    s.DisplayName,
+                    s.Symbol,
+                    s.UserId,
+                    s.ConnectionStatus,
+                    s.AiDifficulty,
+                    s.AiStrategyVersion))]);
+    }
 }

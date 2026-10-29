@@ -27,14 +27,16 @@ public sealed class SubmitActionHandlerTests
             GameTypes.TicTacToe,
             GameMode.Multiplayer,
             SessionStatus.Running,
+            Guid.NewGuid(),
+            null,
             SeatX,
             _modules.Get(GameTypes.TicTacToe).CreateInitialState(2, SeededRandom.ForAction(seed, 0)),
             0,
             seed,
             0,
             [
-                new SeatSnapshot(SeatX, 0, SeatKind.Human, Guid.NewGuid(), SeatConnectionStatus.Connected, null, null),
-                new SeatSnapshot(SeatO, 1, SeatKind.Human, Guid.NewGuid(), SeatConnectionStatus.Connected, null, null),
+                new SeatSnapshot(SeatX, 0, SeatKind.Human, "Spieler X", "X", Guid.NewGuid(), SeatConnectionStatus.Connected, null, null),
+                new SeatSnapshot(SeatO, 1, SeatKind.Human, "Spieler O", "O", Guid.NewGuid(), SeatConnectionStatus.Connected, null, null),
             ]));
     }
 

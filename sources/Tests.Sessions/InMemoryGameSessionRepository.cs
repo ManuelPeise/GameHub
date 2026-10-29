@@ -23,6 +23,125 @@ internal sealed class InMemoryGameSessionRepository : IGameSessionRepository
     public Task<SessionSnapshot?> GetAsync(Guid sessionId, CancellationToken cancellationToken) =>
         Task.FromResult(_sessions.TryGetValue(sessionId, out var session) ? session : null);
 
+    public Task<SessionSnapshot?> FindByInviteCodeAsync(string inviteCode, CancellationToken cancellationToken)
+    {
+        var normalized = inviteCode.Trim().ToUpperInvariant();
+        var session = _sessions.Values.FirstOrDefault(candidate => candidate.InviteCode == normalized);
+        return Task.FromResult(session);
+    }
+
+    public Task<SessionSnapshot?> FindOpenSingleplayerAsync(Guid ownerUserId, string gameType, CancellationToken cancellationToken)
+    {
+        var session = _sessions.Values.FirstOrDefault(candidate =>
+            candidate.OwnerUserId == ownerUserId
+            && candidate.GameType == gameType
+            && candidate.Mode == GameMode.Singleplayer
+            && candidate.Status is SessionStatus.Running or SessionStatus.Paused);
+        return Task.FromResult(session);
+    }
+
+    public Task<bool> CreateSessionAsync(SessionCreateWrite write, CancellationToken cancellationToken)
+    {
+        if (_sessions.ContainsKey(write.Id))
+        {
+            return Task.FromResult(false);
+        }
+
+        if (write.InviteCode is not null && _sessions.Values.Any(session => session.InviteCode == write.InviteCode))
+        {
+            return Task.FromResult(false);
+        }
+
+        if (write.Mode == GameMode.Singleplayer
+            && _sessions.Values.Any(session =>
+                session.OwnerUserId == write.OwnerUserId
+                && session.GameType == write.GameType
+                && session.Mode == GameMode.Singleplayer
+                && session.Status is SessionStatus.Running or SessionStatus.Paused))
+        {
+            return Task.FromResult(false);
+        }
+
+        _sessions[write.Id] = new SessionSnapshot(
+            write.Id,
+            write.GameType,
+            write.Mode,
+            write.Status,
+            write.OwnerUserId,
+            write.InviteCode,
+            write.CurrentSeatId,
+            write.StateJson,
+            write.StateVersion,
+            write.RngSeed,
+            0,
+            [.. write.Seats.OrderBy(seat => seat.Order).Select(seat => new SeatSnapshot(
+                seat.Id,
+                seat.Order,
+                seat.Kind,
+                seat.DisplayName,
+                seat.Symbol,
+                seat.UserId,
+                seat.ConnectionStatus,
+                seat.AiDifficulty,
+                seat.AiStrategyVersion))]);
+        return Task.FromResult(true);
+    }
+
+    public Task<bool> AddSeatAsync(SeatAddWrite write, CancellationToken cancellationToken)
+    {
+        if (!_sessions.TryGetValue(write.SessionId, out var session) || session.StateVersion != write.ExpectedVersion)
+        {
+            return Task.FromResult(false);
+        }
+
+        if (session.Seats.Any(seat => seat.Id == write.Seat.Id || seat.Order == write.Seat.Order))
+        {
+            return Task.FromResult(false);
+        }
+
+        _sessions[write.SessionId] = session with
+        {
+            StateVersion = session.StateVersion + 1,
+            Seats =
+            [
+                .. session.Seats,
+                new SeatSnapshot(
+                    write.Seat.Id,
+                    write.Seat.Order,
+                    write.Seat.Kind,
+                    write.Seat.DisplayName,
+                    write.Seat.Symbol,
+                    write.Seat.UserId,
+                    write.Seat.ConnectionStatus,
+                    write.Seat.AiDifficulty,
+                    write.Seat.AiStrategyVersion),
+            ],
+        };
+
+        return Task.FromResult(true);
+    }
+
+    public Task<bool> StartSessionAsync(SessionStartWrite write, CancellationToken cancellationToken)
+    {
+        if (!_sessions.TryGetValue(write.SessionId, out var session)
+            || session.StateVersion != write.ExpectedVersion
+            || session.Status != SessionStatus.Lobby)
+        {
+            return Task.FromResult(false);
+        }
+
+        _sessions[write.SessionId] = session with
+        {
+            Status = SessionStatus.Running,
+            InviteCode = null,
+            CurrentSeatId = write.CurrentSeatId,
+            StateJson = write.StateJson,
+            StateVersion = session.StateVersion + 1,
+        };
+
+        return Task.FromResult(true);
+    }
+
     public Task<bool> SaveActionAsync(ActionWrite write, CancellationToken cancellationToken)
     {
         var session = _sessions[write.SessionId];

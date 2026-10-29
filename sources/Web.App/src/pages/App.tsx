@@ -1,5 +1,6 @@
 import React from "react";
 import { pagePaths } from "../api/account";
+import { sessionPagePaths } from "../api/sessions";
 import DeleteAccountPage from "./account/DeleteAccountPage";
 import EmailConfirmedPage from "./account/EmailConfirmedPage";
 import ForgotPasswordPage from "./account/ForgotPasswordPage";
@@ -8,9 +9,25 @@ import RegisterPage from "./account/RegisterPage";
 import ResetPasswordPage from "./account/ResetPasswordPage";
 import AdminPage from "./admin/AdminPage";
 import HomePage from "./HomePage";
+import LobbyPage from "./LobbyPage";
+import NewSessionPage from "./NewSessionPage";
 
 /** Minimal path-based page selection until routing and layout arrive. */
 const App: React.FC = () => {
+  if (window.location.pathname === sessionPagePaths.newSession) {
+    return <NewSessionPage />;
+  }
+
+  if (window.location.pathname.startsWith(sessionPagePaths.lobbyPrefix)) {
+    const sessionId = window.location.pathname.slice(sessionPagePaths.lobbyPrefix.length);
+    return <LobbyPage sessionId={sessionId} />;
+  }
+
+  if (window.location.pathname.startsWith(sessionPagePaths.joinPrefix)) {
+    const inviteCode = window.location.pathname.slice(sessionPagePaths.joinPrefix.length);
+    return <LobbyPage inviteCode={inviteCode} />;
+  }
+
   switch (window.location.pathname) {
     case pagePaths.login:
       return <LoginPage />;

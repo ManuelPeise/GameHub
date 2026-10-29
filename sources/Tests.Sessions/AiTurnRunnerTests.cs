@@ -31,14 +31,16 @@ public sealed class AiTurnRunnerTests
             GameTypes.TicTacToe,
             GameMode.Singleplayer,
             SessionStatus.Running,
+            Guid.NewGuid(),
+            null,
             aiSeatId,
             module.CreateInitialState(2, SeededRandom.ForAction(1, 0)),
             0,
             1,
             0,
             [
-                new SeatSnapshot(aiSeatId, 0, SeatKind.Ai, null, SeatConnectionStatus.Connected, AiDifficulties.Easy, "1"),
-                new SeatSnapshot(Guid.NewGuid(), 1, SeatKind.Human, Guid.NewGuid(), SeatConnectionStatus.Connected, null, null),
+                new SeatSnapshot(aiSeatId, 0, SeatKind.Ai, "KI", "X", null, SeatConnectionStatus.Connected, AiDifficulties.Easy, "1"),
+                new SeatSnapshot(Guid.NewGuid(), 1, SeatKind.Human, "Mensch", "O", Guid.NewGuid(), SeatConnectionStatus.Connected, null, null),
             ]));
 
         repository.Add(new SessionSnapshot(
@@ -46,14 +48,16 @@ public sealed class AiTurnRunnerTests
             GameTypes.TicTacToe,
             GameMode.Singleplayer,
             SessionStatus.Running,
+            Guid.NewGuid(),
+            null,
             humanSeatId,
             module.CreateInitialState(2, SeededRandom.ForAction(2, 0)),
             0,
             2,
             0,
             [
-                new SeatSnapshot(humanSeatId, 0, SeatKind.Human, Guid.NewGuid(), SeatConnectionStatus.Connected, null, null),
-                new SeatSnapshot(Guid.NewGuid(), 1, SeatKind.Ai, null, SeatConnectionStatus.Connected, AiDifficulties.Easy, "1"),
+                new SeatSnapshot(humanSeatId, 0, SeatKind.Human, "Mensch", "X", Guid.NewGuid(), SeatConnectionStatus.Connected, null, null),
+                new SeatSnapshot(Guid.NewGuid(), 1, SeatKind.Ai, "KI", "O", null, SeatConnectionStatus.Connected, AiDifficulties.Easy, "1"),
             ]));
 
         var sessions = await repository.GetRunningSessionsWithAiTurnAsync(CancellationToken.None);
@@ -75,14 +79,16 @@ public sealed class AiTurnRunnerTests
             GameTypes.TicTacToe,
             GameMode.Singleplayer,
             SessionStatus.Running,
+            Guid.NewGuid(),
+            null,
             seatHuman,
             module.CreateInitialState(2, SeededRandom.ForAction(123, 0)),
             0,
             123,
             0,
             [
-                new SeatSnapshot(seatHuman, 0, SeatKind.Human, Guid.NewGuid(), SeatConnectionStatus.Connected, null, null),
-                new SeatSnapshot(seatAi, 1, SeatKind.Ai, null, SeatConnectionStatus.Connected, AiDifficulties.Easy, "1"),
+                new SeatSnapshot(seatHuman, 0, SeatKind.Human, "Mensch", "X", Guid.NewGuid(), SeatConnectionStatus.Connected, null, null),
+                new SeatSnapshot(seatAi, 1, SeatKind.Ai, "KI", "O", null, SeatConnectionStatus.Connected, AiDifficulties.Easy, "1"),
             ]));
 
         var scheduler = new AiTurnScheduler();
@@ -136,14 +142,16 @@ public sealed class AiTurnRunnerTests
             GameTypes.TicTacToe,
             GameMode.Singleplayer,
             SessionStatus.Running,
+            Guid.NewGuid(),
+            null,
             seatA,
             module.CreateInitialState(2, SeededRandom.ForAction(55, 0)),
             0,
             55,
             0,
             [
-                new SeatSnapshot(seatA, 0, SeatKind.Ai, null, SeatConnectionStatus.Connected, AiDifficulties.Easy, "1"),
-                new SeatSnapshot(seatB, 1, SeatKind.Ai, null, SeatConnectionStatus.Connected, AiDifficulties.Easy, "1"),
+                new SeatSnapshot(seatA, 0, SeatKind.Ai, "KI A", "X", null, SeatConnectionStatus.Connected, AiDifficulties.Easy, "1"),
+                new SeatSnapshot(seatB, 1, SeatKind.Ai, "KI B", "O", null, SeatConnectionStatus.Connected, AiDifficulties.Easy, "1"),
             ]));
 
         var publisher = new RecordingGameEventPublisher();
@@ -178,12 +186,14 @@ public sealed class AiTurnRunnerTests
             GameTypes.TicTacToe,
             GameMode.Singleplayer,
             SessionStatus.Running,
+            Guid.NewGuid(),
+            null,
             seatAi,
             module.CreateInitialState(2, SeededRandom.ForAction(11, 0)),
             0,
             11,
             0,
-            [new SeatSnapshot(seatAi, 0, SeatKind.Ai, null, SeatConnectionStatus.Connected, AiDifficulties.Easy, "broken")]));
+            [new SeatSnapshot(seatAi, 0, SeatKind.Ai, "KI", "X", null, SeatConnectionStatus.Connected, AiDifficulties.Easy, "broken")]));
 
         var runner = new AiTurnRunner(
             repository,
@@ -213,14 +223,16 @@ public sealed class AiTurnRunnerTests
             GameTypes.TicTacToe,
             GameMode.Singleplayer,
             SessionStatus.Running,
+            Guid.NewGuid(),
+            null,
             seatA,
             module.CreateInitialState(2, SeededRandom.ForAction(77, 0)),
             0,
             77,
             0,
             [
-                new SeatSnapshot(seatA, 0, SeatKind.Ai, null, SeatConnectionStatus.Connected, AiDifficulties.Easy, "1"),
-                new SeatSnapshot(seatB, 1, SeatKind.Ai, null, SeatConnectionStatus.Connected, AiDifficulties.Easy, "1"),
+                new SeatSnapshot(seatA, 0, SeatKind.Ai, "KI A", "X", null, SeatConnectionStatus.Connected, AiDifficulties.Easy, "1"),
+                new SeatSnapshot(seatB, 1, SeatKind.Ai, "KI B", "O", null, SeatConnectionStatus.Connected, AiDifficulties.Easy, "1"),
             ]));
 
         var publisher = new RecordingGameEventPublisher();
