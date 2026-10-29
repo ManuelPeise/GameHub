@@ -703,10 +703,5 @@ public sealed class SessionLifecycleLogic(
         return BitConverter.ToInt64(bytes);
     }
 
-    private static string? Symbol(int order) => order switch
-    {
-        0 => "X",
-        1 => "O",
-        _ => null,
-    };
+    private static string? Symbol(int order) => SeatSymbols.For(order);
 }

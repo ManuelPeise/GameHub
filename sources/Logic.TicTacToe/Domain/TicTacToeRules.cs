@@ -116,6 +116,11 @@ public sealed class TicTacToeRules : IGameRules<TicTacToeState, PlaceMark>
         };
     }
 
+    /// <summary>
+    /// With two seats a removal always ends the game (handled by the session layer), so the board stays as it is.
+    /// </summary>
+    public TicTacToeState RemoveSeat(TicTacToeState state, int seat) => state;
+
     private static int[]? FindWinningLine(string board) =>
         Lines.FirstOrDefault(line =>
             board[line[0]] != TicTacToeState.EmptyCell

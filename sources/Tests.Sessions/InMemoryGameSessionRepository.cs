@@ -183,6 +183,54 @@ internal sealed class InMemoryGameSessionRepository : IGameSessionRepository
         return Task.FromResult(true);
     }
 
+    /// <summary>Disconnect times per seat as written by system actions.</summary>
+    public Dictionary<Guid, DateTimeOffset?> DisconnectedAt { get; } = [];
+
+    public Task<IReadOnlyList<Guid>> GetSessionIdsForUserAsync(
+        Guid userId,
+        IReadOnlyCollection<SessionStatus> statuses,
+        CancellationToken cancellationToken) =>
+        Task.FromResult<IReadOnlyList<Guid>>(
+        [
+            .. _sessions.Values
+                .Where(s => statuses.Contains(s.Status) && s.Seats.Any(seat => seat.UserId == userId))
+                .Select(s => s.Id),
+        ]);
+
+    public Task<IReadOnlyList<PlayerSeatRef>> GetMultiplayerSeatsAsync(SeatConnectionStatus status, CancellationToken cancellationToken) =>
+        Task.FromResult<IReadOnlyList<PlayerSeatRef>>(
+        [
+            .. _sessions.Values
+                .Where(s => s.Mode == GameMode.Multiplayer && s.Status == SessionStatus.Running)
+                .SelectMany(s => s.Seats
+                    .Where(seat => seat.Kind == SeatKind.Human && seat.UserId is not null && seat.ConnectionStatus == status)
+                    .Select(seat => new PlayerSeatRef(s.Id, seat.Id, seat.UserId!.Value))),
+        ]);
+
+    public Task<IReadOnlyList<PlayerSeatRef>> GetExpiredDisconnectedSeatsAsync(DateTimeOffset cutoff, CancellationToken cancellationToken) =>
+        Task.FromResult<IReadOnlyList<PlayerSeatRef>>(
+        [
+            .. _sessions.Values
+                .Where(s => s.Mode == GameMode.Multiplayer && s.Status == SessionStatus.Running)
+                .SelectMany(s => s.Seats
+                    .Where(seat => seat.Kind == SeatKind.Human
+                        && seat.UserId is not null
+                        && seat.ConnectionStatus == SeatConnectionStatus.Disconnected
+                        && DisconnectedAt.TryGetValue(seat.Id, out var at) && at is { } time && time <= cutoff)
+                    .Select(seat => new PlayerSeatRef(s.Id, seat.Id, seat.UserId!.Value))),
+        ]);
+
+    public Task<bool> SetStatusAsync(Guid sessionId, int expectedVersion, SessionStatus status, DateTimeOffset at, CancellationToken cancellationToken)
+    {
+        if (!_sessions.TryGetValue(sessionId, out var session) || session.StateVersion != expectedVersion)
+        {
+            return Task.FromResult(false);
+        }
+
+        _sessions[sessionId] = session with { Status = status, CurrentSeatId = null, StateVersion = expectedVersion + 1 };
+        return Task.FromResult(true);
+    }
+
     public Task<bool> SaveActionAsync(ActionWrite write, CancellationToken cancellationToken)
     {
         var session = _sessions[write.SessionId];
@@ -194,8 +242,19 @@ internal sealed class InMemoryGameSessionRepository : IGameSessionRepository
 
         Actions.Add(write.Action);
         Results.AddRange(write.Results);
+        var changes = (write.SeatChanges ?? []).ToDictionary(change => change.SeatId);
+        foreach (var change in changes.Values)
+        {
+            DisconnectedAt[change.SeatId] = change.DisconnectedAt;
+        }
+
         _sessions[write.SessionId] = session with
         {
+            Seats =
+            [
+                .. session.Seats.Select(seat =>
+                    changes.TryGetValue(seat.Id, out var change) ? seat with { ConnectionStatus = change.Status } : seat),
+            ],
             CurrentSeatId = write.CurrentSeatId,
             StateJson = write.NewStateJson,
             StateVersion = write.ExpectedVersion + 1,

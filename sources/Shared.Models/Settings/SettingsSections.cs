@@ -15,6 +15,15 @@ public sealed class GameSettings
     /// <summary>Inactivity after which a paused singleplayer session is aborted.</summary>
     public TimeSpan PausedSessionRetention { get; set; } = TimeSpan.FromDays(30);
 
+    /// <summary>
+    /// Time without any connection before a seat is marked as disconnected; bridges page changes and
+    /// short network hiccups without entries in the move log.
+    /// </summary>
+    public TimeSpan DisconnectGracePeriod { get; set; } = TimeSpan.FromSeconds(5);
+
+    /// <summary>Interval in which expired reconnect deadlines are checked.</summary>
+    public TimeSpan ConnectionCheckInterval { get; set; } = TimeSpan.FromSeconds(5);
+
     /// <summary>Whether the owner of a multiplayer lobby may add AI seats.</summary>
     public bool AllowAiInMultiplayer { get; set; } = true;
 }

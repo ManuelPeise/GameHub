@@ -97,6 +97,9 @@ public sealed class AppSettings : IAppSettings
 
         Require(Game.TurnTimeout > TimeSpan.Zero, "Game:TurnTimeout", "must be greater than 0");
         Require(Game.ReconnectTimeout > TimeSpan.Zero, "Game:ReconnectTimeout", "must be greater than 0");
+        Require(Game.DisconnectGracePeriod >= TimeSpan.Zero && Game.DisconnectGracePeriod < Game.ReconnectTimeout,
+            "Game:DisconnectGracePeriod", "must be at least 0 and shorter than Game:ReconnectTimeout");
+        Require(Game.ConnectionCheckInterval > TimeSpan.Zero, "Game:ConnectionCheckInterval", "must be greater than 0");
         Require(Game.ReconnectAttempts > 0, "Game:ReconnectAttempts", "must be greater than 0");
         Require(Game.PausedSessionRetention > TimeSpan.Zero, "Game:PausedSessionRetention", "must be greater than 0");
 

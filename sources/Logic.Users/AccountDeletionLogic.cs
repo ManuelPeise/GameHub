@@ -18,12 +18,13 @@ public enum AccountDeletionResult
 /// <summary>
 /// Deleting an account by pseudonymization (US-008; reused by administrators in US-025). Personal data
 /// is removed, the account row and the game history stay. Running games of the user are ended with the
-/// rules of a removed player once sessions exist (US-014).
+/// rules of a removed player (US-014).
 /// </summary>
 public sealed class AccountDeletionLogic(
     IAppSettings appSettings,
     IUserAccountStore accountStore,
-    IAuditLog auditLog) : ALogicBase(appSettings)
+    IAuditLog auditLog,
+    IPlayerSessionCleanup? sessionCleanup = null) : ALogicBase(appSettings)
 {
     /// <summary>The signed-in user deletes the own account: requires the current password and a confirmation.</summary>
     public async Task<AccountDeletionResult> DeleteOwnAccountAsync(
@@ -62,6 +63,12 @@ public sealed class AccountDeletionLogic(
     /// </summary>
     public async Task<AccountDeletionResult> DeleteAsync(Guid userId, string deletedBy, CancellationToken cancellationToken)
     {
+        // Running games first: other players are informed and the game goes on (or ends) without this user.
+        if (sessionCleanup is not null)
+        {
+            await sessionCleanup.RemoveUserFromOpenSessionsAsync(userId, cancellationToken);
+        }
+
         var deleted = await accountStore.PseudonymizeAsync(userId, cancellationToken);
 
         await auditLog.WriteAsync(

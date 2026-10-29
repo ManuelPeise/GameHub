@@ -23,4 +23,11 @@ public interface IGameRules<TState, TAction>
     IReadOnlyList<TAction> LegalActions(TState state, int seat);
 
     GameProgress GetProgress(TState state);
+
+    /// <summary>
+    /// A seat was removed (connection lost, turn timeout, account deleted): it is skipped from now on and
+    /// not scored. Called while at least two seats remain active; the session layer ends the game itself
+    /// when only one active seat would remain.
+    /// </summary>
+    TState RemoveSeat(TState state, int seat);
 }

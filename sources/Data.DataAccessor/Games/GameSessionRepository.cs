@@ -276,6 +276,24 @@ public sealed class GameSessionRepository(GameDbContext database) : IGameSession
             CreatedAt = action.CreatedAt,
         });
 
+        if (write.SeatChanges is { Count: > 0 } changes)
+        {
+            var seatIds = changes.Select(change => change.SeatId).ToList();
+            var seats = await database.Seats
+                .Where(seat => seat.SessionId == write.SessionId && seatIds.Contains(seat.Id))
+                .ToListAsync(cancellationToken)
+                .ConfigureAwait(false);
+            foreach (var change in changes)
+            {
+                var seat = seats.FirstOrDefault(candidate => candidate.Id == change.SeatId);
+                if (seat is not null)
+                {
+                    seat.ConnectionStatus = change.Status;
+                    seat.DisconnectedAt = change.DisconnectedAt;
+                }
+            }
+        }
+
         foreach (var result in write.Results)
         {
             database.GameResults.Add(new GameResult
@@ -309,6 +327,58 @@ public sealed class GameSessionRepository(GameDbContext database) : IGameSession
                 a.SessionId, a.SeatId, a.Sequence, a.ActionType, a.PayloadJson, a.RandomResultJson, a.AiStrategyVersion, a.CreatedAt))
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
+
+    public async Task<IReadOnlyList<Guid>> GetSessionIdsForUserAsync(
+        Guid userId,
+        IReadOnlyCollection<SessionStatus> statuses,
+        CancellationToken cancellationToken) =>
+        await database.Seats.AsNoTracking()
+            .Where(seat => seat.UserId == userId && statuses.Contains(seat.Session!.Status))
+            .Select(seat => seat.SessionId)
+            .Distinct()
+            .ToListAsync(cancellationToken)
+            .ConfigureAwait(false);
+
+    public async Task<IReadOnlyList<PlayerSeatRef>> GetMultiplayerSeatsAsync(SeatConnectionStatus status, CancellationToken cancellationToken) =>
+        await database.Seats.AsNoTracking()
+            .Where(seat => seat.Kind == SeatKind.Human
+                && seat.UserId != null
+                && seat.ConnectionStatus == status
+                && seat.Session!.Mode == GameMode.Multiplayer
+                && seat.Session.Status == SessionStatus.Running)
+            .Select(seat => new PlayerSeatRef(seat.SessionId, seat.Id, seat.UserId!.Value))
+            .ToListAsync(cancellationToken)
+            .ConfigureAwait(false);
+
+    public async Task<IReadOnlyList<PlayerSeatRef>> GetExpiredDisconnectedSeatsAsync(DateTimeOffset cutoff, CancellationToken cancellationToken) =>
+        await database.Seats.AsNoTracking()
+            .Where(seat => seat.Kind == SeatKind.Human
+                && seat.UserId != null
+                && seat.ConnectionStatus == SeatConnectionStatus.Disconnected
+                && seat.DisconnectedAt != null
+                && seat.DisconnectedAt <= cutoff
+                && seat.Session!.Mode == GameMode.Multiplayer
+                && seat.Session.Status == SessionStatus.Running)
+            .Select(seat => new PlayerSeatRef(seat.SessionId, seat.Id, seat.UserId!.Value))
+            .ToListAsync(cancellationToken)
+            .ConfigureAwait(false);
+
+    public async Task<bool> SetStatusAsync(
+        Guid sessionId,
+        int expectedVersion,
+        SessionStatus status,
+        DateTimeOffset at,
+        CancellationToken cancellationToken) =>
+        await database.GameSessions
+            .Where(session => session.Id == sessionId && session.StateVersion == expectedVersion)
+            .ExecuteUpdateAsync(
+                setters => setters
+                    .SetProperty(session => session.Status, status)
+                    .SetProperty(session => session.CurrentSeatId, (Guid?)null)
+                    .SetProperty(session => session.StateVersion, expectedVersion + 1)
+                    .SetProperty(session => session.UpdatedAt, at),
+                cancellationToken)
+            .ConfigureAwait(false) == 1;
 
     public async Task<IReadOnlyList<Guid>> GetRunningSessionsWithAiTurnAsync(CancellationToken cancellationToken) =>
         await database.GameSessions.AsNoTracking()

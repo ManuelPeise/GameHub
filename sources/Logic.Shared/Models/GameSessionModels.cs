@@ -97,7 +97,8 @@ public sealed record ActionWrite(
     string NewStateJson,
     SessionStatus NewStatus,
     Guid? CurrentSeatId,
-    IReadOnlyList<SeatResultWrite> Results);
+    IReadOnlyList<SeatResultWrite> Results,
+    IReadOnlyList<SeatStatusChange>? SeatChanges = null);
 
 /// <summary>Event after an applied action (sent to the clients with US-013).</summary>
 public sealed record GameActionApplied(
@@ -134,3 +135,9 @@ public sealed record OpenLobbySummary(
 
 /// <summary>Event after a change of seats or status outside of a move.</summary>
 public sealed record SessionUpdated(Guid SessionId, int StateVersion, SessionStatus Status);
+
+/// <summary>New connection status of a seat, written together with a system action.</summary>
+public sealed record SeatStatusChange(Guid SeatId, SeatConnectionStatus Status, DateTimeOffset? DisconnectedAt);
+
+/// <summary>A human seat of a running multiplayer session (for connection tracking and deadlines).</summary>
+public sealed record PlayerSeatRef(Guid SessionId, Guid SeatId, Guid UserId);

@@ -18,6 +18,22 @@ export type GameSessionHandlers = {
   onReconnected?: () => void;
 };
 
+/** Reconnect delays of the client: 5 attempts with growing distance (well within the 60 s server deadline). */
+const reconnectDelaysMs = [0, 2000, 5000, 10000, 20000];
+
+export type HubConnectionStatus =
+  | { state: "connected" }
+  | { state: "connecting" }
+  | { state: "reconnecting"; attempt: number; maxAttempts: number }
+  | { state: "disconnected" };
+
+let status: HubConnectionStatus = { state: "connecting" };
+const statusListeners = new Set<() => void>();
+const setStatus = (next: HubConnectionStatus) => {
+  status = next;
+  statusListeners.forEach((listener) => listener());
+};
+
 let connection: HubConnection | null = null;
 let starting: Promise<void> | null = null;
 const joinedSessions = new Map<string, number>();
@@ -28,12 +44,27 @@ const getConnection = (): HubConnection => {
   if (!connection) {
     connection = new HubConnectionBuilder()
       .withUrl(GameHubRoutes.Path)
-      .withAutomaticReconnect([0, 2000, 5000, 10000, 20000])
+      .withAutomaticReconnect({
+        nextRetryDelayInMilliseconds: (context) => {
+          const delay = reconnectDelaysMs[context.previousRetryCount];
+          if (delay === undefined) {
+            return null;
+          }
+          setStatus({ state: "reconnecting", attempt: context.previousRetryCount + 1, maxAttempts: reconnectDelaysMs.length });
+          return delay;
+        },
+      })
       .configureLogging(LogLevel.Warning)
       .build();
 
+    connection.onreconnecting(() => {
+      setStatus({ state: "reconnecting", attempt: 1, maxAttempts: reconnectDelaysMs.length });
+    });
+    connection.onclose(() => setStatus({ state: "disconnected" }));
+
     // Group memberships are lost with the old connection: join all sessions again.
     connection.onreconnected(() => {
+      setStatus({ state: "connected" });
       joinedSessions.forEach((_, sessionId) => {
         void connection?.invoke(GameHubMethods.JoinSession, sessionId);
       });
@@ -47,9 +78,17 @@ const getConnection = (): HubConnection => {
 const ensureStarted = async (): Promise<HubConnection> => {
   const hub = getConnection();
   if (hub.state === HubConnectionState.Disconnected) {
-    starting ??= hub.start().finally(() => {
-      starting = null;
-    });
+    setStatus({ state: "connecting" });
+    starting ??= hub
+      .start()
+      .then(() => setStatus({ state: "connected" }))
+      .catch((error: unknown) => {
+        setStatus({ state: "disconnected" });
+        throw error;
+      })
+      .finally(() => {
+        starting = null;
+      });
   }
   if (starting) {
     await starting;
@@ -137,3 +176,13 @@ export const useGameSessionEvents = (sessionId: string | null | undefined, handl
 
   return subscribedId !== null && subscribedId === sessionId;
 };
+
+/** Connection status for a banner ("Verbindung unterbrochen – Versuch 2 von 5"). */
+export const useHubConnectionStatus = (): HubConnectionStatus =>
+  React.useSyncExternalStore(
+    (listener) => {
+      statusListeners.add(listener);
+      return () => statusListeners.delete(listener);
+    },
+    () => status,
+  );

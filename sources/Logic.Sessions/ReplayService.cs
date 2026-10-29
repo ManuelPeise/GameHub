@@ -27,6 +27,13 @@ public sealed class ReplayService(GameModuleRegistry modules)
                 break;
             }
 
+            if (action.ActionType == SystemActionTypes.PlayerRemoved && action.SeatId is { } removedSeat)
+            {
+                // A removal can change the game state (e.g. skipping the seat), so it is replayed too.
+                state = module.RemoveSeat(state, seatOrders[removedSeat]);
+                continue;
+            }
+
             if (SystemActionTypes.All.Contains(action.ActionType) || action.SeatId is not { } seatId)
             {
                 continue;

@@ -1,4 +1,5 @@
 using Logic.Shared.Models;
+using Shared.Models.Games;
 
 namespace Logic.Shared.Interfaces;
 
@@ -31,6 +32,18 @@ public interface IGameSessionRepository
 
     /// <summary>The move log of a session, ordered by sequence.</summary>
     Task<IReadOnlyList<GameActionRecord>> GetActionsAsync(Guid sessionId, CancellationToken cancellationToken);
+
+    /// <summary>Sessions in the given states in which the user has a seat.</summary>
+    Task<IReadOnlyList<Guid>> GetSessionIdsForUserAsync(Guid userId, IReadOnlyCollection<SessionStatus> statuses, CancellationToken cancellationToken);
+
+    /// <summary>Human seats of running multiplayer sessions with the given connection status.</summary>
+    Task<IReadOnlyList<PlayerSeatRef>> GetMultiplayerSeatsAsync(SeatConnectionStatus status, CancellationToken cancellationToken);
+
+    /// <summary>Disconnected human seats of running multiplayer sessions whose disconnect happened at or before the cutoff.</summary>
+    Task<IReadOnlyList<PlayerSeatRef>> GetExpiredDisconnectedSeatsAsync(DateTimeOffset cutoff, CancellationToken cancellationToken);
+
+    /// <summary>Sets the status (e.g. Aborted) with version check; false on conflict.</summary>
+    Task<bool> SetStatusAsync(Guid sessionId, int expectedVersion, SessionStatus status, DateTimeOffset at, CancellationToken cancellationToken);
 
     /// <summary>Running sessions where the current seat is an AI seat.</summary>
     Task<IReadOnlyList<Guid>> GetRunningSessionsWithAiTurnAsync(CancellationToken cancellationToken);

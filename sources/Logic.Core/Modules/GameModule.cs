@@ -58,6 +58,8 @@ public abstract class GameModule<TState, TAction>(IGameRules<TState, TAction> ru
 
     public GameProgress GetProgress(string stateJson) => rules.GetProgress(DeserializeState(stateJson));
 
+    public string RemoveSeat(string stateJson, int seat) => SerializeState(rules.RemoveSeat(DeserializeState(stateJson), seat));
+
     public IReadOnlyList<(string ActionType, string? PayloadJson)> GetLegalActions(string stateJson, int seat) =>
     [
         .. rules.LegalActions(DeserializeState(stateJson), seat).Select(SerializeAction),

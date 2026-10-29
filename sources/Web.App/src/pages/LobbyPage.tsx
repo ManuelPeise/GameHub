@@ -1,5 +1,6 @@
 import React from "react";
 import { getErrorMessage, sendRequest } from "../hooks/apiClient";
+import ConnectionBanner from "../components/ConnectionBanner";
 import { useGameSessionEvents } from "../hooks/gameHub";
 import {
   difficultyOptions,
@@ -158,6 +159,7 @@ const LobbyPage: React.FC<LobbyPageProps> = ({ sessionId, inviteCode }) => {
   return (
     <main className="account-page">
       <h1>Lobby</h1>
+      <ConnectionBanner />
 
       {session.inviteCode && (
         <div className="account-form">
@@ -177,6 +179,8 @@ const LobbyPage: React.FC<LobbyPageProps> = ({ sessionId, inviteCode }) => {
             .map((seat) => (
               <li key={seat.id}>
                 {seat.displayName} ({seat.kind === "Ai" ? "KI" : "Mensch"})
+                {seat.connectionStatus === "Disconnected" && " – Verbindung unterbrochen"}
+                {seat.connectionStatus === "Removed" && " – aus der Partie entfernt"}
                 {canStart && seat.kind === "Ai" && (
                   <button
                     type="button"
@@ -222,6 +226,9 @@ const LobbyPage: React.FC<LobbyPageProps> = ({ sessionId, inviteCode }) => {
       {session.status === "Running" && (
         <p className="account-success">Die Partie läuft. Die Spielansicht folgt in den nächsten Stories.</p>
       )}
+
+      {session.status === "Finished" && <p className="account-success">Die Partie ist beendet.</p>}
+      {session.status === "Aborted" && <p className="account-error">Die Partie wurde abgebrochen.</p>}
     </main>
   );
 };

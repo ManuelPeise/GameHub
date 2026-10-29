@@ -24,4 +24,7 @@ public interface IGameModule
     IReadOnlyList<(string ActionType, string? PayloadJson)> GetLegalActions(string stateJson, int seat);
 
     GameProgress GetProgress(string stateJson);
+
+    /// <summary>State after removing a seat, see <see cref="IGameRules{TState, TAction}.RemoveSeat"/>.</summary>
+    string RemoveSeat(string stateJson, int seat);
 }

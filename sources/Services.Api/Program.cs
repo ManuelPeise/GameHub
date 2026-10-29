@@ -8,6 +8,7 @@ using Logic.Core.Abstractions;
 using Logic.Core.Ai;
 using Logic.Sessions;
 using Logic.Sessions.Ai;
+using Logic.Sessions.Connections;
 using Logic.Shared.Interfaces;
 using Logic.TicTacToe;
 using Logic.TicTacToe.Ai;
@@ -64,6 +65,11 @@ builder.Services.AddGameSessionStore();
 builder.Services.AddScoped<SubmitActionHandler>();
 builder.Services.AddScoped<SessionLifecycleLogic>();
 builder.Services.AddScoped<AiTurnRunner>();
+builder.Services.AddScoped<PlayerConnectionLogic>();
+builder.Services.AddScoped<IPlayerSessionCleanup>(services => services.GetRequiredService<PlayerConnectionLogic>());
+builder.Services.AddSingleton<ConnectionTracker>();
+builder.Services.AddSingleton<DisconnectScheduler>();
+builder.Services.AddHostedService<ConnectionWatchdog>();
 builder.Services.AddHostedService<AiTurnWorker>();
 
 builder.Services.AddRateLimiter(options =>

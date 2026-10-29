@@ -84,7 +84,7 @@ public sealed class SubmitActionHandler(
             applied.StateJson,
             progress.IsFinished ? SessionStatus.Finished : SessionStatus.Running,
             progress.CurrentSeat is { } current ? session.Seats.FirstOrDefault(s => s.Order == current)?.Id : null,
-            progress.IsFinished ? MapResults(session, progress) : []);
+            progress.IsFinished ? SessionResults.Map(session.Seats, progress) : []);
 
         if (!await repository.SaveActionAsync(write, cancellationToken).ConfigureAwait(false))
         {
@@ -106,29 +106,6 @@ public sealed class SubmitActionHandler(
 
         return new SubmitActionResult.Applied(newVersion, sequence, applied.StateJson, progress);
     }
-
-    private static List<SeatResultWrite> MapResults(SessionSnapshot session, GameProgress progress) =>
-    [
-        .. session.Seats.Select(seat =>
-        {
-            if (seat.ConnectionStatus == SeatConnectionStatus.Removed)
-            {
-                return new SeatResultWrite(seat.Id, GameOutcome.Removed, null, null);
-            }
-
-            var result = progress.Results.FirstOrDefault(r => r.Seat == seat.Order);
-            return result is null
-                ? new SeatResultWrite(seat.Id, GameOutcome.Removed, null, null)
-                : new SeatResultWrite(seat.Id, MapOutcome(result.Outcome), result.Placement, result.Score);
-        }),
-    ];
-
-    private static GameOutcome MapOutcome(SeatOutcome outcome) => outcome switch
-    {
-        SeatOutcome.Win => GameOutcome.Win,
-        SeatOutcome.Loss => GameOutcome.Loss,
-        _ => GameOutcome.Draw,
-    };
 
     private static SubmitActionResult.Rejected Reject(SubmitRejection kind, string error) => new(kind, error);
 }
