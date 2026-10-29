@@ -42,7 +42,8 @@ builder.Services.AddScoped<AccountDeletionLogic>();
 
 // Games: modules, the single move path and replay (endpoints follow with US-012/US-013).
 builder.Services.AddSingleton(TimeProvider.System);
-builder.Services.AddSingleton<IGameModule, TicTacToeModule>();
+builder.Services.AddSingleton<TicTacToeModule>();
+builder.Services.AddSingleton<IGameModule>(services => services.GetRequiredService<TicTacToeModule>());
 builder.Services.AddSingleton<IAiStrategy<TicTacToeView, Logic.TicTacToe.Domain.PlaceMark>, RandomTicTacToeStrategy>();
 builder.Services.AddSingleton<IAiPlayer, TicTacToeAiPlayer>();
 builder.Services.AddSingleton<IAiStrategyRegistry, AiStrategyRegistry>();
