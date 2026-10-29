@@ -1,17 +1,19 @@
 import React from "react";
+import { useSearchParams } from "react-router";
+import Alert from "@mui/material/Alert";
+import Button from "@mui/material/Button";
+import Stack from "@mui/material/Stack";
+import TextField from "@mui/material/TextField";
+import KeyOutlined from "@mui/icons-material/KeyOutlined";
 import { getValidationErrors, sendRequest } from "../../hooks/apiClient";
 import { useStatefulApi } from "../../hooks/useStatefulApi";
-import {
-  accountUrls,
-  pagePaths,
-  type PasswordRulesResponse,
-  type ResetPasswordRequest,
-} from "../../api/account";
-import "./AccountPages.css";
+import { accountUrls, pagePaths, type PasswordRulesResponse, type ResetPasswordRequest } from "../../api/account";
+import AuthCard from "./AuthCard";
+import PasswordRules from "./PasswordRules";
 
 /** Target of the link in the password reset mail (?userId=...&token=...). */
 const ResetPasswordPage: React.FC = () => {
-  const query = new URLSearchParams(window.location.search);
+  const [query] = useSearchParams();
   const userId = query.get("userId") ?? "";
   const token = query.get("token") ?? "";
 
@@ -49,63 +51,51 @@ const ResetPasswordPage: React.FC = () => {
 
   if (!userId || !token) {
     return (
-      <main className="account-page">
-        <h1>Neues Passwort</h1>
-        <p className="account-error" role="alert">
-          Der Link ist unvollständig. Bitte fordere einen neuen an.
-        </p>
-        <p className="account-links">
-          <a href={pagePaths.forgotPassword}>Neuen Link anfordern</a>
-        </p>
-      </main>
+      <AuthCard title="Neues Passwort" icon={<KeyOutlined />}>
+        <Stack spacing={2}>
+          <Alert severity="error">Der Link ist unvollständig. Bitte fordere einen neuen an.</Alert>
+          <Button href={pagePaths.forgotPassword} variant="contained">
+            Neuen Link anfordern
+          </Button>
+        </Stack>
+      </AuthCard>
     );
   }
 
   return (
-    <main className="account-page">
-      <h1>Neues Passwort</h1>
+    <AuthCard title="Neues Passwort" icon={<KeyOutlined />}>
       {done ? (
-        <>
-          <p className="account-success" role="status">
-            Dein Passwort wurde geändert. Du kannst dich jetzt anmelden.
-          </p>
-          <p className="account-links">
-            <a href={pagePaths.login}>Zur Anmeldung</a>
-          </p>
-        </>
+        <Stack spacing={2}>
+          <Alert severity="success">Dein Passwort wurde geändert. Du kannst dich jetzt anmelden.</Alert>
+          <Button href={pagePaths.login} variant="contained">
+            Zur Anmeldung
+          </Button>
+        </Stack>
       ) : (
-        <form className="account-form" onSubmit={submit} noValidate>
-          <div className="account-field">
-            <label htmlFor="newPassword">Neues Passwort</label>
-            <input
-              id="newPassword"
-              type="password"
-              autoComplete="new-password"
-              value={newPassword}
-              onChange={(event) => setNewPassword(event.target.value)}
-              aria-invalid={errors.length > 0 ? true : undefined}
-              aria-describedby="password-rules"
-              required
-            />
-            {passwordRules.data && (
-              <ul id="password-rules" className="account-hint">
-                {passwordRules.data.rules.map((rule) => (
-                  <li key={rule}>{rule}</li>
-                ))}
-              </ul>
-            )}
-          </div>
+        <Stack component="form" spacing={2} onSubmit={submit} noValidate>
+          <TextField
+            label="Neues Passwort"
+            type="password"
+            autoComplete="new-password"
+            value={newPassword}
+            onChange={(event) => setNewPassword(event.target.value)}
+            error={errors.length > 0}
+            slotProps={{ htmlInput: { "aria-describedby": "password-rules" } }}
+            required
+            autoFocus
+          />
+          {passwordRules.data && <PasswordRules id="password-rules" rules={passwordRules.data.rules} />}
           {errors.map((message) => (
-            <p key={message} className="account-error" role="alert">
+            <Alert key={message} severity="error">
               {message}
-            </p>
+            </Alert>
           ))}
-          <button type="submit" disabled={isSubmitting}>
-            {isSubmitting ? "Wird gespeichert …" : "Passwort speichern"}
-          </button>
-        </form>
+          <Button type="submit" variant="contained" size="large" loading={isSubmitting}>
+            Passwort speichern
+          </Button>
+        </Stack>
       )}
-    </main>
+    </AuthCard>
   );
 };
 

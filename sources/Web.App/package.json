@@ -10,10 +10,15 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@emotion/react": "^11.14.0",
+    "@emotion/styled": "^11.14.1",
     "@microsoft/signalr": "^10.0.0",
+    "@mui/icons-material": "^7.3.4",
+    "@mui/material": "^7.3.4",
     "qrcode.react": "^4.2.0",
     "react": "^19.3.1",
-    "react-dom": "^19.3.1"
+    "react-dom": "^19.3.1",
+    "react-router": "^7.9.4"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",

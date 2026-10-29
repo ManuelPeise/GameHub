@@ -1,23 +1,62 @@
 import React from "react";
-import TurnTimer from "../../components/TurnTimer";
+import Alert from "@mui/material/Alert";
+import Box from "@mui/material/Box";
+import Button from "@mui/material/Button";
+import ButtonBase from "@mui/material/ButtonBase";
+import List from "@mui/material/List";
+import ListItem from "@mui/material/ListItem";
+import ListItemText from "@mui/material/ListItemText";
+import Paper from "@mui/material/Paper";
+import Stack from "@mui/material/Stack";
+import Typography from "@mui/material/Typography";
+import Casino from "@mui/icons-material/Casino";
 import { ApiError, getErrorMessage, sendRequest } from "../../hooks/apiClient";
 import { useGameSessionEvents } from "../../hooks/gameHub";
-import {
-  sessionPagePaths,
-  sessionUrls,
-  type SessionDto,
-  type SubmitSessionActionRequest,
-} from "../../api/sessions";
+import { sessionUrls, type SessionDto, type SubmitSessionActionRequest } from "../../api/sessions";
+import { GameEndActions, GameStatusBar } from "../GameParts";
 import KniffelSheetTable from "./KniffelSheetTable";
 import { categories, maxRolls, parseKniffelState, total } from "./kniffel";
-import "./KniffelGame.css";
 
 type KniffelGameProps = {
   session: SessionDto;
   onChanged: (session?: SessionDto) => void;
 };
 
-const pips = ["", "⚀", "⚁", "⚂", "⚃", "⚄", "⚅"];
+/** Pip positions on a 3×3 grid per face. */
+const pipLayout: Record<number, number[]> = {
+  1: [4],
+  2: [0, 8],
+  3: [0, 4, 8],
+  4: [0, 2, 6, 8],
+  5: [0, 2, 4, 6, 8],
+  6: [0, 2, 3, 5, 6, 8],
+};
+
+const Die: React.FC<{ value: number; held: boolean }> = ({ value, held }) => (
+  <Box
+    sx={{
+      display: "grid",
+      gridTemplateColumns: "repeat(3, 1fr)",
+      gridTemplateRows: "repeat(3, 1fr)",
+      width: "100%",
+      height: "100%",
+      p: "16%",
+    }}
+  >
+    {Array.from({ length: 9 }, (_, index) => (
+      <Box
+        key={index}
+        sx={{
+          m: "auto",
+          width: "70%",
+          aspectRatio: "1",
+          borderRadius: "50%",
+          bgcolor: pipLayout[value]?.includes(index) ? (held ? "#1b1036" : "#1c1f2a") : "transparent",
+        }}
+      />
+    ))}
+  </Box>
+);
 
 /** Kniffel table: dice with hold selection, roll button, all score sheets, result and new round. */
 const KniffelGame: React.FC<KniffelGameProps> = ({ session, onChanged }) => {
@@ -36,7 +75,7 @@ const KniffelGame: React.FC<KniffelGameProps> = ({ session, onChanged }) => {
 
   const state = parseKniffelState(session.stateJson);
   if (!state) {
-    return <p className="account-error">Der Spielstand kann nicht angezeigt werden.</p>;
+    return <Alert severity="error">Der Spielstand kann nicht angezeigt werden.</Alert>;
   }
 
   const seats = [...session.seats].sort((a, b) => a.order - b.order);
@@ -46,6 +85,8 @@ const KniffelGame: React.FC<KniffelGameProps> = ({ session, onChanged }) => {
   const isMyTurn = isRunning && mySeat !== undefined && currentSeat?.id === mySeat.id;
   const heldMask = hold && hold.version === session.stateVersion ? hold.mask : state.heldMask;
   const canHold = isMyTurn && state.rollsUsed > 0 && state.rollsUsed < maxRolls;
+  const isEnded = session.status === "Finished" || session.status === "Aborted";
+  const aiThinking = Boolean(aiThinkingSeat && aiThinkingSeat === currentSeat?.id);
 
   const send = async (actionType: string, payload: unknown) => {
     setIsSubmitting(true);
@@ -73,136 +114,127 @@ const KniffelGame: React.FC<KniffelGameProps> = ({ session, onChanged }) => {
     }
   };
 
-  const roll = () => void send("Roll", { heldMask: state.rollsUsed === 0 ? 0 : heldMask });
-  const score = (categoryIndex: number) => void send("Score", { category: categories[categoryIndex] });
-
-  const rematch = async () => {
-    setError(null);
-    try {
-      const next = await sendRequest<SessionDto>("POST", { serviceUrl: sessionUrls.rematch(session.id) });
-      if (next) {
-        window.location.assign(`${sessionPagePaths.lobbyPrefix}${next.id}`);
-      }
-    } catch (failure) {
-      setError(getErrorMessage(failure, "Die neue Runde konnte nicht gestartet werden."));
-    }
-  };
-
-  const isEnded = session.status === "Finished" || session.status === "Aborted";
   const ranking = seats
     .filter((seat) => !state.removed[seat.order])
     .map((seat) => ({ seat, points: total(state.sheets[seat.order]) }))
     .sort((a, b) => b.points - a.points);
+  const best = ranking[0]?.points;
+  const winners = ranking.filter((entry) => entry.points === best);
+
+  const resultText =
+    session.status === "Aborted"
+      ? "Die Partie wurde abgebrochen."
+      : winners.length > 1
+        ? "Unentschieden."
+        : winners[0]?.seat.id === mySeat?.id
+          ? "Du hast gewonnen!"
+          : `${winners[0]?.seat.displayName ?? "–"} hat gewonnen.`;
 
   const statusText = (() => {
     if (session.status === "Paused") {
       return "Die Partie ist pausiert.";
     }
-    if (session.status === "Aborted") {
-      return "Die Partie wurde abgebrochen.";
-    }
-    if (isEnded) {
-      const best = ranking[0]?.points;
-      const winners = ranking.filter((entry) => entry.points === best);
-      if (winners.length > 1) {
-        return "Unentschieden.";
-      }
-      return winners[0]?.seat.id === mySeat?.id ? "Du hast gewonnen!" : `${winners[0]?.seat.displayName ?? "–"} hat gewonnen.`;
-    }
-    if (aiThinkingSeat && aiThinkingSeat === currentSeat?.id) {
-      return `${currentSeat.displayName} denkt …`;
+    if (aiThinking) {
+      return `${currentSeat?.displayName} denkt …`;
     }
     if (isMyTurn) {
       return state.rollsUsed === 0
-        ? "Du bist am Zug: würfle."
+        ? "Du bist am Zug – würfle!"
         : state.rollsUsed < maxRolls
-          ? "Halte Würfel und würfle erneut oder werte eine Kategorie."
-          : "Wähle eine Kategorie.";
+          ? "Tippe Würfel zum Halten an, würfle erneut oder werte unten."
+          : "Wähle eine Kategorie im Block.";
     }
-    return currentSeat ? `${currentSeat.displayName} ist am Zug.` : null;
+    return currentSeat ? `${currentSeat.displayName} ist am Zug.` : "";
   })();
 
+  const rollDisabled = !isMyTurn || state.rollsUsed >= maxRolls || isSubmitting || (state.rollsUsed > 0 && heldMask === 31);
+
   return (
-    <section className="kniffel-game" aria-label="Kniffel">
-      <p className="kniffel-status" role="status" aria-live="polite">
-        {statusText} {isRunning && <TurnTimer deadline={session.turnDeadline} />}
-      </p>
+    <Stack spacing={2} sx={{ width: "100%", maxWidth: 720, mx: "auto" }}>
+      {!isEnded && <GameStatusBar text={statusText} busy={aiThinking || isSubmitting} highlight={isMyTurn} deadline={session.turnDeadline} />}
 
       {isRunning && (
-        <div className="kniffel-table">
-          <div className="kniffel-dice" role="group" aria-label="Würfel">
-            {state.dice.map((die, index) => {
-              const isHeld = state.rollsUsed > 0 && (heldMask & (1 << index)) !== 0;
-              return (
-                <button
-                  key={index}
-                  type="button"
-                  className={`kniffel-die${isHeld ? " kniffel-die--held" : ""}`}
-                  onClick={() => toggle(index)}
-                  disabled={!canHold || isSubmitting}
-                  aria-pressed={isHeld}
-                  aria-label={die === 0 ? "noch nicht gewürfelt" : `Würfel ${die}${isHeld ? ", gehalten" : ""}`}
-                >
-                  {die === 0 ? "·" : pips[die]}
-                </button>
-              );
-            })}
-          </div>
-          <button
-            type="button"
-            onClick={roll}
-            disabled={!isMyTurn || state.rollsUsed >= maxRolls || isSubmitting || (state.rollsUsed > 0 && heldMask === 31)}
-          >
-            Würfeln (noch {maxRolls - state.rollsUsed})
-          </button>
-        </div>
+        <Paper variant="outlined" sx={{ p: { xs: 1.5, sm: 2 } }}>
+          <Stack spacing={1.5}>
+            <Stack direction="row" spacing={{ xs: 1, sm: 1.5 }} role="group" aria-label="Würfel" sx={{ justifyContent: "center" }}>
+              {state.dice.map((die, index) => {
+                const isHeld = state.rollsUsed > 0 && (heldMask & (1 << index)) !== 0;
+                return (
+                  <ButtonBase
+                    key={index}
+                    onClick={() => toggle(index)}
+                    disabled={!canHold || isSubmitting}
+                    aria-pressed={isHeld}
+                    aria-label={die === 0 ? "noch nicht gewürfelt" : `Würfel ${die}${isHeld ? ", gehalten" : ""}`}
+                    sx={{
+                      flex: "1 1 0",
+                      maxWidth: 72,
+                      aspectRatio: "1",
+                      borderRadius: 2.5,
+                      bgcolor: die === 0 ? "action.hover" : isHeld ? "primary.main" : "#f4f1ea",
+                      border: 3,
+                      borderColor: isHeld ? "primary.light" : "transparent",
+                      transform: isHeld ? "translateY(-6px)" : "none",
+                      boxShadow: die === 0 ? "none" : 3,
+                      transition: "transform 120ms, background-color 120ms",
+                    }}
+                  >
+                    {die > 0 && <Die value={die} held={isHeld} />}
+                  </ButtonBase>
+                );
+              })}
+            </Stack>
+            <Button
+              variant="contained"
+              size="large"
+              startIcon={<Casino />}
+              onClick={() => void send("Roll", { heldMask: state.rollsUsed === 0 ? 0 : heldMask })}
+              disabled={rollDisabled}
+              fullWidth
+            >
+              Würfeln ({maxRolls - state.rollsUsed} übrig)
+            </Button>
+          </Stack>
+        </Paper>
+      )}
+
+      {error && <Alert severity="error">{error}</Alert>}
+
+      {isEnded && (
+        <>
+          <GameEndActions session={session} rematchId={rematchId} result={resultText} isWin={winners.length === 1 && winners[0]?.seat.id === mySeat?.id} />
+          <Paper variant="outlined">
+            <Typography variant="h3" sx={{ px: 2, pt: 2 }}>
+              Endwertung
+            </Typography>
+            <List dense>
+              {ranking.map((entry) => (
+                <ListItem key={entry.seat.id}>
+                  <ListItemText
+                    primary={`${1 + ranking.filter((other) => other.points > entry.points).length}. ${entry.seat.id === mySeat?.id ? "Du" : entry.seat.displayName}`}
+                  />
+                  <Typography sx={{ fontWeight: 700 }}>{entry.points} Punkte</Typography>
+                </ListItem>
+              ))}
+              {seats
+                .filter((seat) => state.removed[seat.order])
+                .map((seat) => (
+                  <ListItem key={seat.id}>
+                    <ListItemText primary={seat.displayName} secondary="aus der Wertung gestrichen" sx={{ opacity: 0.6 }} />
+                  </ListItem>
+                ))}
+            </List>
+          </Paper>
+        </>
       )}
 
       <KniffelSheetTable
         state={state}
         seats={seats}
         mySeatId={session.mySeatId}
-        onScore={isMyTurn && state.rollsUsed > 0 && !isSubmitting ? score : undefined}
+        onScore={isMyTurn && state.rollsUsed > 0 && !isSubmitting ? (index) => void send("Score", { category: categories[index] }) : undefined}
       />
-
-      {error && (
-        <p className="account-error" role="alert">
-          {error}
-        </p>
-      )}
-
-      {isEnded && (
-        <>
-          <ol className="kniffel-ranking" aria-label="Endwertung">
-            {ranking.map((entry) => (
-              <li key={entry.seat.id}>
-                {entry.seat.id === mySeat?.id ? "Du" : entry.seat.displayName}: {entry.points} Punkte
-              </li>
-            ))}
-            {seats
-              .filter((seat) => state.removed[seat.order])
-              .map((seat) => (
-                <li key={seat.id} className="kniffel-removed">
-                  {seat.displayName}: aus der Wertung gestrichen
-                </li>
-              ))}
-          </ol>
-          <div className="kniffel-actions">
-            {rematchId ? (
-              <>
-                <span>Eine neue Runde wurde gestartet.</span>
-                <a href={`${sessionPagePaths.lobbyPrefix}${rematchId}`}>Zur neuen Runde</a>
-              </>
-            ) : (
-              <button type="button" onClick={() => void rematch()}>
-                Neue Runde
-              </button>
-            )}
-            <a href={`${sessionPagePaths.historyPrefix}${session.id}`}>Verlauf ansehen</a>
-          </div>
-        </>
-      )}
-    </section>
+    </Stack>
   );
 };
 

@@ -1,60 +1,153 @@
 import React from "react";
+import Box from "@mui/material/Box";
+import Button from "@mui/material/Button";
+import Card from "@mui/material/Card";
+import CardActions from "@mui/material/CardActions";
+import CardContent from "@mui/material/CardContent";
+import Grid from "@mui/material/Grid";
+import List from "@mui/material/List";
+import ListItemButton from "@mui/material/ListItemButton";
+import ListItemText from "@mui/material/ListItemText";
+import Stack from "@mui/material/Stack";
+import Typography from "@mui/material/Typography";
+import Casino from "@mui/icons-material/Casino";
+import GridOn from "@mui/icons-material/GridOn";
+import PlayCircleOutline from "@mui/icons-material/PlayCircleOutline";
+import SmartToyOutlined from "@mui/icons-material/SmartToyOutlined";
+import GroupsOutlined from "@mui/icons-material/GroupsOutlined";
+import { pagePaths } from "../api/account";
+import { gameNames, sessionPagePaths, sessionUrls, type SessionDto } from "../api/sessions";
+import { useCurrentUser } from "../app/CurrentUser";
+import Loading from "../components/Loading";
+import Page from "../components/Page";
+import SectionCard from "../components/SectionCard";
+import StatusChip from "../components/StatusChip";
 import { sendRequest } from "../hooks/apiClient";
-import { useStatefulApi } from "../hooks/useStatefulApi";
-import { accountUrls, pagePaths, roleNames, type CurrentUserResponse } from "../api/account";
-import { sessionPagePaths } from "../api/sessions";
-import "./account/AccountPages.css";
 
-/** Start page: shows the signed-in user, otherwise links to login and registration. */
+const games = [
+  {
+    type: "TicTacToe",
+    icon: <GridOn sx={{ fontSize: 40 }} color="primary" />,
+    text: "Der Klassiker auf dem 3×3-Feld – gegen die KI in drei Stufen oder gegen Freunde.",
+  },
+  {
+    type: "Kniffel",
+    icon: <Casino sx={{ fontSize: 40 }} color="secondary" />,
+    text: "Fünf Würfel, drei Würfe, 13 Kategorien – allein gegen die KI oder mit bis zu vier Spielern.",
+  },
+] as const;
+
+const newSessionLink = (game: string, mode: "Singleplayer" | "Multiplayer") =>
+  `${sessionPagePaths.newSession}?game=${game}&mode=${mode}`;
+
+/** Start page: games to start, own open games; signed out a short introduction. */
 const HomePage: React.FC = () => {
-  const currentUser = useStatefulApi<CurrentUserResponse>({ serviceUrl: accountUrls.me });
-  const loadCurrentUser = currentUser.get;
+  const { user } = useCurrentUser();
+  const [openSessions, setOpenSessions] = React.useState<SessionDto[] | null>(null);
 
   React.useEffect(() => {
-    void loadCurrentUser();
-  }, [loadCurrentUser]);
+    if (!user) {
+      return;
+    }
+    sendRequest<SessionDto[]>("GET", { serviceUrl: sessionUrls.mine })
+      .then((sessions) => setOpenSessions(sessions ?? []))
+      .catch(() => setOpenSessions([]));
+  }, [user]);
 
-  const logout = async () => {
-    await sendRequest<null>("POST", { serviceUrl: accountUrls.logout });
-    window.location.assign(pagePaths.login);
-  };
+  if (user === undefined) {
+    return <Loading />;
+  }
 
-  if (!currentUser.isDataBound && !currentUser.isError) {
-    return <main className="account-page">Lädt …</main>;
+  if (user === null) {
+    return (
+      <Page title="Willkommen bei GameHub" subtitle="Tic-Tac-Toe und Kniffel – gegen die KI oder mit Freunden.">
+        <Grid container spacing={2}>
+          {games.map((game) => (
+            <Grid key={game.type} size={{ xs: 12, sm: 6 }}>
+              <Card sx={{ height: "100%" }}>
+                <CardContent>
+                  <Stack direction="row" spacing={2} sx={{ alignItems: "center", mb: 1 }}>
+                    {game.icon}
+                    <Typography variant="h3">{gameNames[game.type]}</Typography>
+                  </Stack>
+                  <Typography color="text.secondary">{game.text}</Typography>
+                </CardContent>
+              </Card>
+            </Grid>
+          ))}
+        </Grid>
+        <Stack direction="row" spacing={2}>
+          <Button href={pagePaths.login} variant="contained" size="large">
+            Anmelden
+          </Button>
+          <Button href={pagePaths.register} variant="outlined" size="large">
+            Konto anlegen
+          </Button>
+        </Stack>
+      </Page>
+    );
   }
 
   return (
-    <main className="account-page">
-      <h1>GameHub</h1>
-      {currentUser.data ? (
-        <>
-          <p>
-            Angemeldet als <strong>{currentUser.data.displayName}</strong> ({currentUser.data.email})
-          </p>
-          {currentUser.data.roles.includes(roleNames.administrator) && (
-            <p className="account-links">
-              <a href={pagePaths.admin}>Administration</a>
-            </p>
-          )}
-          <div className="account-form">
-            <button type="button" onClick={() => void logout()}>
-              Abmelden
-            </button>
-          </div>
-          <p className="account-links">
-            <a href={sessionPagePaths.newSession}>Neue Partie</a>
-            <a href={sessionPagePaths.openLobbies}>Offene Partien</a>
-            <a href={sessionPagePaths.history}>Spielverlauf</a>
-            <a href={pagePaths.deleteAccount}>Konto löschen</a>
-          </p>
-        </>
-      ) : (
-        <p className="account-links">
-          <a href={pagePaths.login}>Anmelden</a>
-          <a href={pagePaths.register}>Registrieren</a>
-        </p>
-      )}
-    </main>
+    <Page title={`Hallo, ${user.displayName}!`} subtitle="Worauf hast du Lust?" width="lg">
+      <Grid container spacing={2}>
+        {games.map((game) => (
+          <Grid key={game.type} size={{ xs: 12, md: 6 }}>
+            <Card sx={{ height: "100%", display: "flex", flexDirection: "column" }}>
+              <CardContent sx={{ flexGrow: 1 }}>
+                <Stack direction="row" spacing={2} sx={{ alignItems: "center", mb: 1 }}>
+                  {game.icon}
+                  <Typography variant="h2">{gameNames[game.type]}</Typography>
+                </Stack>
+                <Typography color="text.secondary">{game.text}</Typography>
+              </CardContent>
+              <CardActions sx={{ p: 2, pt: 0, gap: 1, flexWrap: "wrap" }}>
+                <Button href={newSessionLink(game.type, "Singleplayer")} variant="contained" startIcon={<SmartToyOutlined />}>
+                  Gegen die KI
+                </Button>
+                <Button href={newSessionLink(game.type, "Multiplayer")} variant="outlined" startIcon={<GroupsOutlined />}>
+                  Mit Freunden
+                </Button>
+              </CardActions>
+            </Card>
+          </Grid>
+        ))}
+      </Grid>
+
+      <SectionCard
+        title="Deine offenen Partien"
+        icon={<PlayCircleOutline color="primary" />}
+        action={
+          <Button href={sessionPagePaths.openLobbies} size="small">
+            Offenen Partien beitreten
+          </Button>
+        }
+      >
+        {openSessions === null && <Loading />}
+        {openSessions?.length === 0 && (
+          <Typography color="text.secondary">Keine offenen Partien – starte oben eine neue.</Typography>
+        )}
+        {openSessions && openSessions.length > 0 && (
+          <List disablePadding>
+            {openSessions.map((session) => (
+              <ListItemButton key={session.id} href={`${sessionPagePaths.lobbyPrefix}${session.id}`} sx={{ borderRadius: 2 }}>
+                <ListItemText
+                  primary={gameNames[session.gameType] ?? session.gameType}
+                  secondary={
+                    session.mode === "Singleplayer"
+                      ? "gegen die KI"
+                      : session.seats.map((seat) => seat.displayName).join(", ")
+                  }
+                />
+                <Box sx={{ ml: 2 }}>
+                  <StatusChip status={session.status} />
+                </Box>
+              </ListItemButton>
+            ))}
+          </List>
+        )}
+      </SectionCard>
+    </Page>
   );
 };
 

@@ -1,6 +1,7 @@
-import React from "react";
+import { Route, Routes, useParams } from "react-router";
 import { pagePaths } from "../api/account";
 import { sessionPagePaths } from "../api/sessions";
+import AppLayout from "../app/AppLayout";
 import DeleteAccountPage from "./account/DeleteAccountPage";
 import EmailConfirmedPage from "./account/EmailConfirmedPage";
 import ForgotPasswordPage from "./account/ForgotPasswordPage";
@@ -8,59 +9,53 @@ import LoginPage from "./account/LoginPage";
 import RegisterPage from "./account/RegisterPage";
 import ResetPasswordPage from "./account/ResetPasswordPage";
 import AdminPage from "./admin/AdminPage";
+import HistoryDetailPage from "./history/HistoryDetailPage";
+import HistoryPage from "./history/HistoryPage";
 import HomePage from "./HomePage";
 import LobbyPage from "./LobbyPage";
 import NewSessionPage from "./NewSessionPage";
+import NotFoundPage from "./NotFoundPage";
 import OpenLobbiesPage from "./OpenLobbiesPage";
-import HistoryDetailPage from "./history/HistoryDetailPage";
-import HistoryPage from "./history/HistoryPage";
+import StatisticsPage from "./StatisticsPage";
 
-/** Minimal path-based page selection until routing and layout arrive. */
-const App: React.FC = () => {
-  if (window.location.pathname === sessionPagePaths.newSession) {
-    return <NewSessionPage />;
-  }
-
-  if (window.location.pathname === sessionPagePaths.history) {
-    return <HistoryPage />;
-  }
-
-  if (window.location.pathname.startsWith(sessionPagePaths.historyPrefix)) {
-    return <HistoryDetailPage sessionId={window.location.pathname.slice(sessionPagePaths.historyPrefix.length)} />;
-  }
-
-  if (window.location.pathname === sessionPagePaths.openLobbies) {
-    return <OpenLobbiesPage />;
-  }
-
-  if (window.location.pathname.startsWith(sessionPagePaths.lobbyPrefix)) {
-    const sessionId = window.location.pathname.slice(sessionPagePaths.lobbyPrefix.length);
-    return <LobbyPage sessionId={sessionId} />;
-  }
-
-  if (window.location.pathname.startsWith(sessionPagePaths.joinPrefix)) {
-    const inviteCode = window.location.pathname.slice(sessionPagePaths.joinPrefix.length);
-    return <LobbyPage inviteCode={inviteCode} />;
-  }
-
-  switch (window.location.pathname) {
-    case pagePaths.login:
-      return <LoginPage />;
-    case pagePaths.register:
-      return <RegisterPage />;
-    case pagePaths.forgotPassword:
-      return <ForgotPasswordPage />;
-    case pagePaths.resetPassword:
-      return <ResetPasswordPage />;
-    case pagePaths.emailConfirmed:
-      return <EmailConfirmedPage />;
-    case pagePaths.deleteAccount:
-      return <DeleteAccountPage />;
-    case pagePaths.admin:
-      return <AdminPage />;
-    default:
-      return <HomePage />;
-  }
+// Route parameters; the key renders a fresh page when the session changes (e.g. "Neue Runde").
+const SessionRoute = () => {
+  const { sessionId = "" } = useParams();
+  return <LobbyPage key={sessionId} sessionId={sessionId} />;
 };
+
+const JoinRoute = () => {
+  const { inviteCode = "" } = useParams();
+  return <LobbyPage key={inviteCode} inviteCode={inviteCode} />;
+};
+
+const HistoryDetailRoute = () => {
+  const { sessionId = "" } = useParams();
+  return <HistoryDetailPage key={sessionId} sessionId={sessionId} />;
+};
+
+/** All pages inside the common layout. */
+const App = () => (
+  <Routes>
+    <Route element={<AppLayout />}>
+      <Route index element={<HomePage />} />
+      <Route path={pagePaths.login} element={<LoginPage />} />
+      <Route path={pagePaths.register} element={<RegisterPage />} />
+      <Route path={pagePaths.forgotPassword} element={<ForgotPasswordPage />} />
+      <Route path={pagePaths.resetPassword} element={<ResetPasswordPage />} />
+      <Route path={pagePaths.emailConfirmed} element={<EmailConfirmedPage />} />
+      <Route path={pagePaths.deleteAccount} element={<DeleteAccountPage />} />
+      <Route path={pagePaths.admin} element={<AdminPage />} />
+      <Route path={sessionPagePaths.newSession} element={<NewSessionPage />} />
+      <Route path={sessionPagePaths.openLobbies} element={<OpenLobbiesPage />} />
+      <Route path={`${sessionPagePaths.lobbyPrefix}:sessionId`} element={<SessionRoute />} />
+      <Route path={`${sessionPagePaths.joinPrefix}:inviteCode`} element={<JoinRoute />} />
+      <Route path={sessionPagePaths.history} element={<HistoryPage />} />
+      <Route path={`${sessionPagePaths.historyPrefix}:sessionId`} element={<HistoryDetailRoute />} />
+      <Route path={sessionPagePaths.statistics} element={<StatisticsPage />} />
+      <Route path="*" element={<NotFoundPage />} />
+    </Route>
+  </Routes>
+);
 
 export default App;

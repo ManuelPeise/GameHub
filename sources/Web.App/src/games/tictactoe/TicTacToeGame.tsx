@@ -1,14 +1,12 @@
 import React from "react";
-import TurnTimer from "../../components/TurnTimer";
-import { getErrorMessage, sendRequest, ApiError } from "../../hooks/apiClient";
+import Alert from "@mui/material/Alert";
+import Box from "@mui/material/Box";
+import ButtonBase from "@mui/material/ButtonBase";
+import Stack from "@mui/material/Stack";
+import { ApiError, getErrorMessage, sendRequest } from "../../hooks/apiClient";
 import { useGameSessionEvents } from "../../hooks/gameHub";
-import {
-  sessionPagePaths,
-  sessionUrls,
-  type SessionDto,
-  type SubmitSessionActionRequest,
-} from "../../api/sessions";
-import "./TicTacToeGame.css";
+import { sessionUrls, type SessionDto, type SubmitSessionActionRequest } from "../../api/sessions";
+import { GameEndActions, GameStatusBar } from "../GameParts";
 
 type TicTacToeState = {
   board: string;
@@ -35,7 +33,7 @@ const parseState = (json: string): TicTacToeState | null => {
   }
 };
 
-/** The Tic-Tac-Toe board with moves, "KI denkt …", result and a new round. */
+/** The Tic-Tac-Toe board (square, fills the phone width), status, result and a new round. */
 const TicTacToeGame: React.FC<TicTacToeGameProps> = ({ session, onChanged }) => {
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const [aiThinkingSeat, setAiThinkingSeat] = React.useState<string | null>(null);
@@ -50,15 +48,15 @@ const TicTacToeGame: React.FC<TicTacToeGameProps> = ({ session, onChanged }) => 
 
   const state = parseState(session.stateJson);
   if (!state) {
-    return <p className="account-error">Der Spielstand kann nicht angezeigt werden.</p>;
+    return <Alert severity="error">Der Spielstand kann nicht angezeigt werden.</Alert>;
   }
 
   const mySeat = session.seats.find((seat) => seat.id === session.mySeatId);
   const currentSeat = session.seats.find((seat) => seat.id === session.currentSeatId);
-  const isMyTurn =
-    session.status === "Running" && state.status === "Running" && currentSeat !== undefined && currentSeat.id === mySeat?.id;
-  const isFinished = session.status === "Finished" || state.status !== "Running";
+  const isMyTurn = session.status === "Running" && state.status === "Running" && currentSeat !== undefined && currentSeat.id === mySeat?.id;
+  const isEnded = session.status === "Finished" || session.status === "Aborted" || state.status !== "Running";
   const winningLine = state.winningLine ?? [];
+  const winner = session.seats.find((seat) => seat.order === state.winnerSeat);
 
   const place = async (cell: number) => {
     if (!isMyTurn || isSubmitting || state.board[cell] !== "-") {
@@ -85,18 +83,6 @@ const TicTacToeGame: React.FC<TicTacToeGameProps> = ({ session, onChanged }) => 
     }
   };
 
-  const rematch = async () => {
-    setError(null);
-    try {
-      const next = await sendRequest<SessionDto>("POST", { serviceUrl: sessionUrls.rematch(session.id) });
-      if (next) {
-        window.location.assign(`${sessionPagePaths.lobbyPrefix}${next.id}`);
-      }
-    } catch (failure) {
-      setError(getErrorMessage(failure, "Die neue Runde konnte nicht gestartet werden."));
-    }
-  };
-
   const resultText = (() => {
     if (session.status === "Aborted") {
       return "Die Partie wurde abgebrochen.";
@@ -104,23 +90,18 @@ const TicTacToeGame: React.FC<TicTacToeGameProps> = ({ session, onChanged }) => 
     if (state.status === "Draw") {
       return "Unentschieden.";
     }
-    const winner = session.seats.find((seat) => seat.order === state.winnerSeat);
     if (state.status === "Won" && winner) {
       return winner.id === mySeat?.id ? "Du hast gewonnen!" : `${winner.displayName} hat gewonnen.`;
     }
-    // Finished without a winner on the board: the other player was removed.
-    if (session.status === "Finished") {
-      return mySeat?.connectionStatus === "Removed" ? "Du wurdest aus der Partie entfernt." : "Du hast gewonnen – dein Gegner wurde entfernt.";
-    }
-    return null;
+    return mySeat?.connectionStatus === "Removed"
+      ? "Du wurdest aus der Partie entfernt."
+      : "Du hast gewonnen – dein Gegner wurde entfernt.";
   })();
+  const isWin = (state.status === "Won" && winner?.id === mySeat?.id) || resultText.startsWith("Du hast gewonnen");
 
   const statusText = (() => {
     if (session.status === "Paused") {
       return "Die Partie ist pausiert.";
-    }
-    if (isFinished) {
-      return resultText;
     }
     if (aiThinkingSeat && aiThinkingSeat === currentSeat?.id) {
       return "KI denkt …";
@@ -128,56 +109,58 @@ const TicTacToeGame: React.FC<TicTacToeGameProps> = ({ session, onChanged }) => 
     if (isMyTurn) {
       return `Du bist am Zug (${mySeat?.symbol ?? ""}).`;
     }
-    return currentSeat ? `${currentSeat.displayName} ist am Zug.` : null;
+    return currentSeat ? `${currentSeat.displayName} ist am Zug.` : "";
   })();
 
   return (
-    <section className="ttt-game" aria-label="Tic-Tac-Toe">
-      <p className="ttt-status" role="status" aria-live="polite">
-        {statusText} {!isFinished && <TurnTimer deadline={session.turnDeadline} />}
-      </p>
+    <Stack spacing={2} sx={{ width: "100%", maxWidth: 440, mx: "auto" }}>
+      {!isEnded && (
+        <GameStatusBar
+          text={statusText}
+          busy={Boolean(aiThinkingSeat && aiThinkingSeat === currentSeat?.id) || isSubmitting}
+          highlight={isMyTurn}
+          deadline={session.turnDeadline}
+        />
+      )}
 
-      <div className="ttt-board" role="grid" aria-label="Spielfeld">
+      <Box
+        role="grid"
+        aria-label="Spielfeld"
+        sx={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: { xs: 1, sm: 1.5 }, width: "100%", aspectRatio: "1" }}
+      >
         {[...state.board].map((cell, index) => {
           const isEmpty = cell === "-";
+          const isWinning = winningLine.includes(index);
           return (
-            <button
+            <ButtonBase
               key={index}
-              type="button"
               role="gridcell"
-              className={`ttt-cell${winningLine.includes(index) ? " ttt-cell--win" : ""}`}
               onClick={() => void place(index)}
               disabled={!isMyTurn || !isEmpty || isSubmitting}
               aria-label={`Feld ${cellNames[index]}, ${isEmpty ? "leer" : cell}`}
+              sx={{
+                borderRadius: 3,
+                border: 2,
+                borderColor: isWinning ? "secondary.main" : "divider",
+                bgcolor: isWinning ? "rgba(255, 183, 77, 0.15)" : "background.paper",
+                fontSize: "clamp(2.5rem, 14vw, 4.5rem)",
+                fontWeight: 800,
+                color: cell === "X" ? "primary.main" : "secondary.main",
+                transition: "border-color 120ms, background-color 120ms",
+                "&:not(.Mui-disabled):hover": { borderColor: "primary.main", bgcolor: "rgba(157, 123, 255, 0.08)" },
+                "&.Mui-focusVisible": { borderColor: "primary.main" },
+              }}
             >
               {isEmpty ? "" : cell}
-            </button>
+            </ButtonBase>
           );
         })}
-      </div>
+      </Box>
 
-      {error && (
-        <p className="account-error" role="alert">
-          {error}
-        </p>
-      )}
+      {error && <Alert severity="error">{error}</Alert>}
 
-      {(session.status === "Finished" || session.status === "Aborted") && (
-        <div className="ttt-actions">
-          {rematchId ? (
-            <>
-              <span>Eine neue Runde wurde gestartet.</span>
-              <a href={`${sessionPagePaths.lobbyPrefix}${rematchId}`}>Zur neuen Runde</a>
-            </>
-          ) : (
-            <button type="button" onClick={() => void rematch()}>
-              Neue Runde
-            </button>
-          )}
-          <a href={`${sessionPagePaths.historyPrefix}${session.id}`}>Verlauf ansehen</a>
-        </div>
-      )}
-    </section>
+      {isEnded && <GameEndActions session={session} rematchId={rematchId} result={resultText} isWin={isWin} />}
+    </Stack>
   );
 };
 

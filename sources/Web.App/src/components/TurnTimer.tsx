@@ -1,4 +1,6 @@
 import React from "react";
+import Chip from "@mui/material/Chip";
+import TimerOutlined from "@mui/icons-material/TimerOutlined";
 
 type TurnTimerProps = {
   /** Deadline of the seat at turn (ISO timestamp from the server); nothing is shown without one. */
@@ -30,9 +32,13 @@ const TurnTimer: React.FC<TurnTimerProps> = ({ deadline }) => {
 
   const remaining = new Date(deadline).getTime() - now;
   return (
-    <span className={remaining <= 30_000 ? "account-error" : undefined} aria-live="polite">
-      noch {format(remaining)}
-    </span>
+    <Chip
+      icon={<TimerOutlined />}
+      size="small"
+      color={remaining <= 30_000 ? "error" : "default"}
+      label={`noch ${format(remaining)}`}
+      aria-live="polite"
+    />
   );
 };
 

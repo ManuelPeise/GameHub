@@ -8,7 +8,7 @@ namespace Tests.Shared;
 /// </summary>
 public sealed class TypeScriptContractTests
 {
-    private static readonly string[] Namespaces = ["Shared.Models.Games", "Shared.Models.Realtime"];
+    private static readonly string[] Namespaces = ["Shared.Models.Games", "Shared.Models.Realtime", "Shared.Models.Statistics"];
 
     [Xunit.Fact]
     public void GeneratedTypeScriptContracts_AreUpToDate()

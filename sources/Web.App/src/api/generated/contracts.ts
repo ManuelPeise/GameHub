@@ -154,3 +154,48 @@ export type SessionUpdatedMessage = {
   stateVersion: number;
   status: SessionStatus;
 };
+
+export const StatisticsPeriods = {
+  All: "all",
+  Last30Days: "30d",
+} as const;
+
+export type HighScoreDto = {
+  rank: number;
+  displayName: string;
+  isMe: boolean;
+  score: number;
+  achievedAt: string;
+};
+
+export type LeaderboardDto = {
+  gameType: string;
+  period: string;
+  entries: LeaderboardEntryDto[];
+  highScores: HighScoreDto[];
+};
+
+export type LeaderboardEntryDto = {
+  rank: number;
+  displayName: string;
+  isMe: boolean;
+  games: number;
+  wins: number;
+  winRate: number;
+};
+
+export type PlayerStatisticsDto = {
+  rows: StatisticsRowDto[];
+};
+
+export type StatisticsRowDto = {
+  gameType: string;
+  mode: GameMode;
+  aiDifficulty?: string | null;
+  games: number;
+  wins: number;
+  losses: number;
+  draws: number;
+  averageScore?: number | null;
+  bestScore?: number | null;
+};

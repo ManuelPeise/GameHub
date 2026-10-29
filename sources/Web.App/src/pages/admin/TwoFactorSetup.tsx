@@ -1,5 +1,18 @@
 import React from "react";
 import { QRCodeSVG } from "qrcode.react";
+import Alert from "@mui/material/Alert";
+import Box from "@mui/material/Box";
+import Button from "@mui/material/Button";
+import Grid from "@mui/material/Grid";
+import Paper from "@mui/material/Paper";
+import Stack from "@mui/material/Stack";
+import Step from "@mui/material/Step";
+import StepContent from "@mui/material/StepContent";
+import StepLabel from "@mui/material/StepLabel";
+import Stepper from "@mui/material/Stepper";
+import TextField from "@mui/material/TextField";
+import Typography from "@mui/material/Typography";
+import SecurityOutlined from "@mui/icons-material/SecurityOutlined";
 import { getValidationErrors, sendRequest } from "../../hooks/apiClient";
 import { useStatefulApi } from "../../hooks/useStatefulApi";
 import {
@@ -8,7 +21,7 @@ import {
   type RecoveryCodesResponse,
   type TwoFactorSetupResponse,
 } from "../../api/account";
-import "../account/AccountPages.css";
+import SectionCard from "../../components/SectionCard";
 
 type Props = {
   /** Called after the user has saved the recovery codes. */
@@ -33,6 +46,7 @@ const TwoFactorSetup: React.FC<Props> = ({ onCompleted }) => {
     event.preventDefault();
     setIsSubmitting(true);
     setErrors([]);
+
     try {
       const response = await sendRequest<RecoveryCodesResponse, EnableTwoFactorRequest>("POST", {
         serviceUrl: accountUrls.enableTwoFactor,
@@ -49,69 +63,76 @@ const TwoFactorSetup: React.FC<Props> = ({ onCompleted }) => {
 
   if (recoveryCodes) {
     return (
-      <section>
-        <h2>Wiederherstellungscodes</h2>
-        <p>
-          Die Zwei-Faktor-Anmeldung ist aktiv. Bewahre diese Codes sicher auf: Mit jedem Code kannst du dich
-          einmal anmelden, falls du keinen Zugriff auf die Authenticator-App hast. Sie werden nur jetzt angezeigt.
-        </p>
-        <ul className="account-codes">
+      <SectionCard title="Wiederherstellungscodes" icon={<SecurityOutlined color="success" />}>
+        <Alert severity="success">
+          Die Zwei-Faktor-Anmeldung ist aktiv. Bewahre diese Codes sicher auf: Mit jedem Code kannst du dich einmal
+          anmelden, falls du keinen Zugriff auf die Authenticator-App hast. Sie werden nur jetzt angezeigt.
+        </Alert>
+        <Grid container spacing={1}>
           {recoveryCodes.map((recoveryCode) => (
-            <li key={recoveryCode}>
-              <code>{recoveryCode}</code>
-            </li>
+            <Grid key={recoveryCode} size={{ xs: 6, sm: 4 }}>
+              <Paper variant="outlined" sx={{ p: 1, textAlign: "center", fontFamily: "monospace" }}>
+                {recoveryCode}
+              </Paper>
+            </Grid>
           ))}
-        </ul>
-        <div className="account-form">
-          <button type="button" onClick={onCompleted}>
-            Ich habe die Codes gespeichert
-          </button>
-        </div>
-      </section>
+        </Grid>
+        <Button variant="contained" onClick={onCompleted} sx={{ alignSelf: "flex-start" }}>
+          Ich habe die Codes gespeichert
+        </Button>
+      </SectionCard>
     );
   }
 
   return (
-    <section>
-      <h2>Zwei-Faktor-Anmeldung einrichten</h2>
-      <p>Für den Admin-Bereich ist eine Authenticator-App (z. B. Microsoft oder Google Authenticator) erforderlich.</p>
-      {setup.data && (
-        <ol className="account-steps">
-          <li>
-            Scanne den QR-Code mit der App:
-            <div className="account-qr">
-              <QRCodeSVG value={setup.data.authenticatorUri} size={192} marginSize={2} title="QR-Code für die Authenticator-App" />
-            </div>
-            Falls das Scannen nicht klappt, gib diesen Schlüssel von Hand ein:
-            <br />
-            <code className="account-key">{setup.data.sharedKey.match(/.{1,4}/g)?.join(" ")}</code>
-          </li>
-          <li>Gib den sechsstelligen Code ein, den die App anzeigt.</li>
-        </ol>
-      )}
-      <form className="account-form" onSubmit={submit} noValidate>
-        <div className="account-field">
-          <label htmlFor="setup-code">Code aus der App</label>
-          <input
-            id="setup-code"
-            type="text"
-            inputMode="numeric"
-            autoComplete="one-time-code"
-            value={code}
-            onChange={(event) => setCode(event.target.value)}
-            required
-          />
-        </div>
-        {errors.map((message) => (
-          <p key={message} className="account-error" role="alert">
-            {message}
-          </p>
-        ))}
-        <button type="submit" disabled={isSubmitting || !setup.data}>
-          {isSubmitting ? "Wird geprüft …" : "Aktivieren"}
-        </button>
-      </form>
-    </section>
+    <SectionCard title="Zwei-Faktor-Anmeldung einrichten" icon={<SecurityOutlined color="primary" />}>
+      <Typography color="text.secondary">
+        Für den Admin-Bereich ist eine Authenticator-App (z. B. Microsoft oder Google Authenticator) erforderlich.
+      </Typography>
+      <Stepper orientation="vertical" nonLinear activeStep={-1}>
+        <Step expanded>
+          <StepLabel>QR-Code mit der App scannen</StepLabel>
+          <StepContent>
+            {setup.data && (
+              <Stack spacing={1}>
+                <Box sx={{ bgcolor: "#fff", p: 1, borderRadius: 2, width: "fit-content" }}>
+                  <QRCodeSVG value={setup.data.authenticatorUri} size={176} marginSize={1} title="QR-Code für die Authenticator-App" />
+                </Box>
+                <Typography variant="body2" color="text.secondary">
+                  Falls das Scannen nicht klappt, gib diesen Schlüssel von Hand ein:
+                </Typography>
+                <Typography sx={{ fontFamily: "monospace", letterSpacing: 1 }}>
+                  {setup.data.sharedKey.match(/.{1,4}/g)?.join(" ")}
+                </Typography>
+              </Stack>
+            )}
+          </StepContent>
+        </Step>
+        <Step expanded>
+          <StepLabel>Code aus der App eingeben</StepLabel>
+          <StepContent>
+            <Stack component="form" spacing={2} onSubmit={submit} noValidate sx={{ maxWidth: 320 }}>
+              <TextField
+                label="Sechsstelliger Code"
+                value={code}
+                onChange={(event) => setCode(event.target.value)}
+                autoComplete="one-time-code"
+                slotProps={{ htmlInput: { inputMode: "numeric" } }}
+                required
+              />
+              {errors.map((message) => (
+                <Alert key={message} severity="error">
+                  {message}
+                </Alert>
+              ))}
+              <Button type="submit" variant="contained" loading={isSubmitting} disabled={!setup.data}>
+                Aktivieren
+              </Button>
+            </Stack>
+          </StepContent>
+        </Step>
+      </Stepper>
+    </SectionCard>
   );
 };
 

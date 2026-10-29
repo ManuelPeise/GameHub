@@ -1,7 +1,13 @@
 import React from "react";
+import Alert from "@mui/material/Alert";
+import Button from "@mui/material/Button";
+import Link from "@mui/material/Link";
+import Stack from "@mui/material/Stack";
+import TextField from "@mui/material/TextField";
+import KeyOutlined from "@mui/icons-material/KeyOutlined";
 import { ApiError, sendRequest } from "../../hooks/apiClient";
 import { accountUrls, pagePaths, type EmailRequest, type MessageResponse } from "../../api/account";
-import "./AccountPages.css";
+import AuthCard from "./AuthCard";
 
 const ForgotPasswordPage: React.FC = () => {
   const [email, setEmail] = React.useState("");
@@ -32,40 +38,32 @@ const ForgotPasswordPage: React.FC = () => {
   };
 
   return (
-    <main className="account-page">
-      <h1>Passwort vergessen</h1>
+    <AuthCard
+      title="Passwort vergessen"
+      icon={<KeyOutlined />}
+      subtitle={message ? undefined : "Wir schicken dir einen Link, mit dem du ein neues Passwort festlegen kannst."}
+      footer={<Link href={pagePaths.login}>Zur Anmeldung</Link>}
+    >
       {message ? (
-        <p className="account-success" role="status">
-          {message}
-        </p>
+        <Alert severity="success">{message}</Alert>
       ) : (
-        <form className="account-form" onSubmit={submit} noValidate>
-          <p>Gib deine E-Mail-Adresse ein. Wir schicken dir einen Link, mit dem du ein neues Passwort festlegen kannst.</p>
-          <div className="account-field">
-            <label htmlFor="email">E-Mail-Adresse</label>
-            <input
-              id="email"
-              type="email"
-              autoComplete="email"
-              value={email}
-              onChange={(event) => setEmail(event.target.value)}
-              required
-            />
-          </div>
-          {error && (
-            <p className="account-error" role="alert">
-              {error}
-            </p>
-          )}
-          <button type="submit" disabled={isSubmitting}>
-            {isSubmitting ? "Wird gesendet …" : "Link anfordern"}
-          </button>
-        </form>
+        <Stack component="form" spacing={2} onSubmit={submit} noValidate>
+          <TextField
+            label="E-Mail-Adresse"
+            type="email"
+            autoComplete="email"
+            value={email}
+            onChange={(event) => setEmail(event.target.value)}
+            required
+            autoFocus
+          />
+          {error && <Alert severity="error">{error}</Alert>}
+          <Button type="submit" variant="contained" size="large" loading={isSubmitting}>
+            Link anfordern
+          </Button>
+        </Stack>
       )}
-      <p className="account-links">
-        <a href={pagePaths.login}>Zur Anmeldung</a>
-      </p>
-    </main>
+    </AuthCard>
   );
 };
 

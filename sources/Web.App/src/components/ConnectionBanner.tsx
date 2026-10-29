@@ -1,26 +1,34 @@
-import React from "react";
+import Alert from "@mui/material/Alert";
+import Button from "@mui/material/Button";
+import LinearProgress from "@mui/material/LinearProgress";
 import { useHubConnectionStatus } from "../hooks/gameHub";
 
 /** Shows the state of the real-time connection while it is not connected. */
-const ConnectionBanner: React.FC = () => {
+const ConnectionBanner = () => {
   const status = useHubConnectionStatus();
 
   if (status.state === "reconnecting") {
     return (
-      <p className="account-error" role="status">
+      <Alert severity="warning" role="status">
         Verbindung unterbrochen – Wiederverbindung (Versuch {status.attempt} von {status.maxAttempts}) …
-      </p>
+        <LinearProgress color="warning" sx={{ mt: 1 }} />
+      </Alert>
     );
   }
 
   if (status.state === "disconnected") {
     return (
-      <p className="account-error" role="alert">
-        Die Verbindung ist verloren.{" "}
-        <button type="button" onClick={() => window.location.reload()}>
-          Neu laden
-        </button>
-      </p>
+      <Alert
+        severity="error"
+        role="alert"
+        action={
+          <Button color="inherit" size="small" onClick={() => window.location.reload()}>
+            Neu laden
+          </Button>
+        }
+      >
+        Die Verbindung ist verloren.
+      </Alert>
     );
   }
 

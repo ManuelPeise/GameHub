@@ -42,6 +42,7 @@ export const sessionPagePaths = {
   openLobbies: "/sessions/open",
   history: "/history",
   historyPrefix: "/history/",
+  statistics: "/statistics",
   lobbyPrefix: "/lobby/",
   joinPrefix: "/join/",
 } as const;

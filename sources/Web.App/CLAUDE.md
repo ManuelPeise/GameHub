@@ -19,19 +19,20 @@ npm run preview    # gebautes dist/ lokal ausliefern
 
 Einen einzelnen Test gibt es nicht: Dieses Projekt enthält derzeit **kein** Test-Setup.
 
-## Stand des Projekts
+## Aufbau
 
-Mit `create-vite` (Template `react-ts`) erzeugt und in die Solution eingebunden (`Web.App.esproj`,
-Projektmappenordner 01 Web). Aufbau von `src/`:
-
-- `main.tsx` – Einstieg, rendert `pages/App.tsx`
-- `pages/` – Seiten (derzeit nur `App.tsx` als Platzhalter)
-- `hooks/` – API-Zugriff: `apiClient.ts` (`sendRequest`), `useStatefulApi` (mit Lade-/Fehlerzustand),
-  `useStatelessApi` (ohne eigenen Zustand), Typen in `hooks/types/api.ts`
-
-Noch keine Routen, kein State-Management, keine SignalR-Anbindung, kein Dev-Proxy zur API und kein
-Test-Setup. Geplante Ordner (siehe Konzept): `src/api/generated/`, `src/games/tictactoe/`,
-`src/games/kniffel/`, `src/admin/`, `e2e/` (Playwright).
+- **UI:** Material UI (`@mui/material`, Icons aus `@mui/icons-material`), dunkles Theme in `src/app/theme.ts`.
+  Keine eigenen CSS-Dateien; Styling über `sx` und Theme. **Mobile first:** Layouts zuerst für das Handy
+  (eine Spalte, große Touch-Flächen), ab `sm`/`md` erweitern.
+- **Routing:** React Router (`react-router`), Routen in `src/pages/App.tsx`. Links und Buttons mit `href`
+  navigieren über `src/app/LinkBehavior.tsx` ohne Neuladen; im Code `useNavigate()` statt `window.location`.
+- **Layout:** `src/app/AppLayout.tsx` – App-Leiste mit Konto-Menü und Umgebungs-Chip, Seitenmenü
+  (Desktop dauerhaft, Handy als Schublade) und untere Navigationsleiste auf dem Handy.
+- **Angemeldeter Benutzer:** `useCurrentUser()` aus `src/app/CurrentUser.tsx` (nach Login/Logout `reload()`).
+- **Bausteine:** `components/Page` (Seitenrahmen), `SectionCard`, `Loading`, `StatusChip`, `TurnTimer`,
+  `ConnectionBanner`; Spiele unter `src/games/` (gemeinsam: `games/GameParts.tsx`).
+- **API:** `hooks/apiClient.ts` (`sendRequest`, `getErrorMessage`); Typen aus `src/api/generated/contracts.ts`
+  (aus `Shared.Models` erzeugt), Echtzeit über `hooks/gameHub.ts`.
 
 ## Technik- und Konfigurationshinweise
 

@@ -1,8 +1,25 @@
 import React from "react";
+import Alert from "@mui/material/Alert";
+import Box from "@mui/material/Box";
+import Chip from "@mui/material/Chip";
+import IconButton from "@mui/material/IconButton";
+import List from "@mui/material/List";
+import ListItemButton from "@mui/material/ListItemButton";
+import ListItemText from "@mui/material/ListItemText";
+import Paper from "@mui/material/Paper";
+import Slider from "@mui/material/Slider";
+import Stack from "@mui/material/Stack";
+import Typography from "@mui/material/Typography";
+import FirstPage from "@mui/icons-material/FirstPage";
+import LastPage from "@mui/icons-material/LastPage";
+import NavigateBefore from "@mui/icons-material/NavigateBefore";
+import NavigateNext from "@mui/icons-material/NavigateNext";
+import ReplayOutlined from "@mui/icons-material/ReplayOutlined";
+import ListAltOutlined from "@mui/icons-material/ListAltOutlined";
+import EmojiEventsOutlined from "@mui/icons-material/EmojiEventsOutlined";
 import {
   gameNames,
   outcomeLabels,
-  sessionPagePaths,
   sessionUrls,
   type GameHistoryDetailDto,
   type HistoryActionDto,
@@ -11,8 +28,9 @@ import {
 import { getErrorMessage, sendRequest } from "../../hooks/apiClient";
 import { categoryLabels, parseKniffelState } from "../../games/kniffel/kniffel";
 import KniffelSheetTable from "../../games/kniffel/KniffelSheetTable";
-import "../account/AccountPages.css";
-import "./HistoryPages.css";
+import Loading from "../../components/Loading";
+import Page from "../../components/Page";
+import SectionCard from "../../components/SectionCard";
 
 type HistoryDetailPageProps = {
   sessionId: string;
@@ -67,7 +85,7 @@ const describeAction = (action: HistoryActionDto): string => {
   return `${action.actionType}${action.payloadJson ? ` ${action.payloadJson}` : ""}${random}`;
 };
 
-/** Read-only view of a game state; Tic-Tac-Toe as board, other games as JSON until they have their own view. */
+/** Read-only view of a game state: Tic-Tac-Toe board, Kniffel dice and score sheets, otherwise JSON. */
 const StateView: React.FC<{ gameType: string; stateJson: string; seats: SeatDto[] }> = ({ gameType, stateJson, seats }) => {
   const state = parseJson(stateJson);
   const board = state?.board;
@@ -75,34 +93,57 @@ const StateView: React.FC<{ gameType: string; stateJson: string; seats: SeatDto[
     const winningLine = state?.winningLine;
     const winning = Array.isArray(winningLine) ? (winningLine as number[]) : [];
     return (
-      <div className="history-board" role="grid" aria-label="Spielfeld">
+      <Box
+        role="grid"
+        aria-label="Spielfeld"
+        sx={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 1, width: "100%", maxWidth: 280, mx: "auto", aspectRatio: "1" }}
+      >
         {[...board].map((cell, index) => (
-          <div
+          <Paper
             key={index}
             role="gridcell"
-            className={`history-cell${winning.includes(index) ? " history-cell--win" : ""}`}
+            variant="outlined"
             aria-label={`${cellNames[index]}: ${cell === "-" ? "leer" : cell}`}
+            sx={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              fontSize: "2.4rem",
+              fontWeight: 800,
+              color: cell === "X" ? "primary.main" : "secondary.main",
+              borderColor: winning.includes(index) ? "secondary.main" : "divider",
+              borderWidth: 2,
+            }}
           >
             {cell === "-" ? "" : cell}
-          </div>
+          </Paper>
         ))}
-      </div>
+      </Box>
     );
   }
 
   const kniffel = gameType === "Kniffel" ? parseKniffelState(stateJson) : null;
   if (kniffel) {
     return (
-      <>
-        <p aria-label="Würfel">
-          Würfel: {kniffel.dice.some((die) => die > 0) ? kniffel.dice.join(" · ") : "–"} (Wurf {kniffel.rollsUsed} von 3)
-        </p>
+      <Stack spacing={1.5}>
+        <Stack direction="row" spacing={1} aria-label="Würfel" sx={{ justifyContent: "center", flexWrap: "wrap" }}>
+          {kniffel.dice.some((die) => die > 0) ? (
+            kniffel.dice.map((die, index) => <Chip key={index} label={die} color={(kniffel.heldMask & (1 << index)) !== 0 ? "primary" : "default"} />)
+          ) : (
+            <Typography color="text.secondary">noch nicht gewürfelt</Typography>
+          )}
+          <Chip variant="outlined" label={`Wurf ${kniffel.rollsUsed} von 3`} />
+        </Stack>
         <KniffelSheetTable state={kniffel} seats={seats} />
-      </>
+      </Stack>
     );
   }
 
-  return <pre className="history-json">{JSON.stringify(state, null, 2)}</pre>;
+  return (
+    <Box component="pre" sx={{ maxHeight: 320, overflow: "auto", fontSize: "0.8rem" }}>
+      {JSON.stringify(state, null, 2)}
+    </Box>
+  );
 };
 
 /** Move log of a finished game with a step-by-step replay (forward and back). */
@@ -131,91 +172,88 @@ const HistoryDetailPage: React.FC<HistoryDetailPageProps> = ({ sessionId }) => {
   }, [sessionId]);
 
   if (!detail) {
-    return (
-      <main className="account-page">
-        <h1>Partieverlauf</h1>
-        <p>{error ?? "Lädt …"}</p>
-      </main>
-    );
+    return <Page title="Partieverlauf">{error ? <Alert severity="error">{error}</Alert> : <Loading />}</Page>;
   }
 
   const { entry, actions } = detail;
+  const seats: SeatDto[] = entry.seats.map((seat) => ({
+    id: seat.seatId,
+    order: seat.order,
+    kind: seat.kind,
+    displayName: seat.displayName,
+    connectionStatus: seat.outcome === "Removed" ? "Removed" : "Connected",
+  }));
   const seatName = (seatId?: string | null) => entry.seats.find((seat) => seat.seatId === seatId)?.displayName ?? "System";
   const stateJson = step === 0 ? detail.initialStateJson : actions[step - 1].stateJson;
+  const current = step > 0 ? actions[step - 1] : null;
 
   return (
-    <main className="account-page">
-      <h1>{gameNames[entry.gameType] ?? entry.gameType}: Partieverlauf</h1>
+    <Page
+      title={gameNames[entry.gameType] ?? entry.gameType}
+      subtitle={`${entry.mode === "Singleplayer" ? "gegen die KI" : "Mehrspieler"} · ${new Date(entry.endedAt).toLocaleString("de-DE", { dateStyle: "medium", timeStyle: "short" })}`}
+      width="lg"
+    >
+      <SectionCard title="Ergebnis" icon={<EmojiEventsOutlined color="secondary" />}>
+        <Stack direction="row" spacing={1} sx={{ flexWrap: "wrap", gap: 1 }}>
+          {[...entry.seats]
+            .sort((a, b) => (a.placement ?? 99) - (b.placement ?? 99))
+            .map((seat) => (
+              <Chip
+                key={seat.seatId}
+                color={seat.outcome === "Win" ? "success" : seat.outcome === "Draw" ? "info" : "default"}
+                variant={seat.isMe ? "filled" : "outlined"}
+                label={`${seat.displayName}${seat.isMe ? " (du)" : ""}: ${seat.outcome ? outcomeLabels[seat.outcome] : "–"}${
+                  seat.score !== null && seat.score !== undefined ? ` · ${seat.score} P.` : ""
+                }`}
+              />
+            ))}
+        </Stack>
+      </SectionCard>
 
-      <section className="account-form">
-        <h2>Ergebnis</h2>
-        <ul>
-          {entry.seats.map((seat) => (
-            <li key={seat.seatId}>
-              {seat.displayName}
-              {seat.isMe && " (du)"}: {seat.outcome ? outcomeLabels[seat.outcome] : "–"}
-              {seat.score !== null && seat.score !== undefined && `, ${seat.score} Punkte`}
-            </li>
-          ))}
-        </ul>
-      </section>
-
-      <section className="account-form" aria-label="Nachspielen">
-        <h2>
-          Nachspielen – Schritt {step} von {actions.length}
-        </h2>
-        <StateView
-          gameType={entry.gameType}
-          stateJson={stateJson}
-          seats={entry.seats.map((seat) => ({
-            id: seat.seatId,
-            order: seat.order,
-            kind: seat.kind,
-            displayName: seat.displayName,
-            connectionStatus: seat.outcome === "Removed" ? "Removed" : "Connected",
-          }))}
-        />
-        <div className="history-controls">
-          <button type="button" onClick={() => setStep(0)} disabled={step === 0} aria-label="Zum Anfang">
-            ⏮
-          </button>
-          <button type="button" onClick={() => setStep(step - 1)} disabled={step === 0} aria-label="Ein Schritt zurück">
-            ◀
-          </button>
-          <input
-            type="range"
+      <SectionCard title="Nachspielen" icon={<ReplayOutlined color="primary" />}>
+        <Typography color="text.secondary" sx={{ minHeight: 24 }}>
+          {current ? `${step}. ${seatName(current.seatId)}: ${describeAction(current)}` : "Startposition"}
+        </Typography>
+        <StateView gameType={entry.gameType} stateJson={stateJson} seats={seats} />
+        <Stack direction="row" spacing={1} sx={{ alignItems: "center" }}>
+          <IconButton onClick={() => setStep(0)} disabled={step === 0} aria-label="Zum Anfang">
+            <FirstPage />
+          </IconButton>
+          <IconButton onClick={() => setStep(step - 1)} disabled={step === 0} aria-label="Ein Schritt zurück">
+            <NavigateBefore />
+          </IconButton>
+          <Slider
+            value={step}
             min={0}
             max={actions.length}
-            value={step}
-            onChange={(event) => setStep(Number(event.target.value))}
+            step={1}
+            onChange={(_, value) => setStep(value as number)}
             aria-label="Schritt wählen"
+            valueLabelDisplay="auto"
+            sx={{ mx: 1 }}
           />
-          <button type="button" onClick={() => setStep(step + 1)} disabled={step === actions.length} aria-label="Ein Schritt vor">
-            ▶
-          </button>
-          <button type="button" onClick={() => setStep(actions.length)} disabled={step === actions.length} aria-label="Zum Ende">
-            ⏭
-          </button>
-        </div>
-      </section>
+          <IconButton onClick={() => setStep(step + 1)} disabled={step === actions.length} aria-label="Ein Schritt vor">
+            <NavigateNext />
+          </IconButton>
+          <IconButton onClick={() => setStep(actions.length)} disabled={step === actions.length} aria-label="Zum Ende">
+            <LastPage />
+          </IconButton>
+        </Stack>
+      </SectionCard>
 
-      <section className="account-form">
-        <h2>Alle Aktionen</h2>
-        <ol className="history-actions">
+      <SectionCard title={`Alle Aktionen (${actions.length})`} icon={<ListAltOutlined color="primary" />}>
+        <List dense disablePadding sx={{ maxHeight: { xs: 360, md: 480 }, overflowY: "auto" }}>
           {actions.map((action, index) => (
-            <li key={action.sequence} className={index + 1 === step ? "history-action--current" : undefined}>
-              <button type="button" className="history-action-link" onClick={() => setStep(index + 1)}>
-                {new Date(action.createdAt).toLocaleTimeString("de-DE")} – {seatName(action.seatId)}: {describeAction(action)}
-              </button>
-            </li>
+            <ListItemButton key={action.sequence} selected={index + 1 === step} onClick={() => setStep(index + 1)} sx={{ borderRadius: 2 }}>
+              <ListItemText
+                primary={`${seatName(action.seatId)}: ${describeAction(action)}`}
+                secondary={`${action.sequence}. · ${new Date(action.createdAt).toLocaleTimeString("de-DE")}`}
+              />
+            </ListItemButton>
           ))}
-        </ol>
-      </section>
-
-      <p className="account-links">
-        <a href={sessionPagePaths.history}>Zum Spielverlauf</a>
-      </p>
-    </main>
+        </List>
+      </SectionCard>
+    </Page>
   );
 };
 

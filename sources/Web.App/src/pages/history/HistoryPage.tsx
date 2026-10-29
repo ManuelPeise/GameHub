@@ -1,15 +1,26 @@
 import React from "react";
-import { pagePaths } from "../../api/account";
+import Alert from "@mui/material/Alert";
+import Avatar from "@mui/material/Avatar";
+import Button from "@mui/material/Button";
+import Chip from "@mui/material/Chip";
+import List from "@mui/material/List";
+import ListItemAvatar from "@mui/material/ListItemAvatar";
+import ListItemButton from "@mui/material/ListItemButton";
+import ListItemText from "@mui/material/ListItemText";
+import Typography from "@mui/material/Typography";
+import Casino from "@mui/icons-material/Casino";
+import GridOn from "@mui/icons-material/GridOn";
 import {
   gameNames,
   outcomeLabels,
   sessionPagePaths,
   sessionUrls,
-  statusLabels,
   type GameHistoryEntryDto,
 } from "../../api/sessions";
 import { getErrorMessage, sendRequest } from "../../hooks/apiClient";
-import "../account/AccountPages.css";
+import Loading from "../../components/Loading";
+import Page from "../../components/Page";
+import SectionCard from "../../components/SectionCard";
 
 const pageSize = 20;
 
@@ -18,6 +29,28 @@ const formatDate = (value: string) =>
     dateStyle: "medium",
     timeStyle: "short",
   });
+
+const resultChip = (entry: GameHistoryEntryDto) => {
+  if (entry.status === "Aborted") {
+    return <Chip size="small" label="abgebrochen" />;
+  }
+  const outcome = entry.myOutcome;
+  const color =
+    outcome === "Win"
+      ? "success"
+      : outcome === "Draw"
+        ? "info"
+        : outcome
+          ? "error"
+          : "default";
+  return (
+    <Chip
+      size="small"
+      color={color}
+      label={outcome ? outcomeLabels[outcome] : "–"}
+    />
+  );
+};
 
 /** List of the own finished and aborted games. */
 const HistoryPage: React.FC = () => {
@@ -56,56 +89,63 @@ const HistoryPage: React.FC = () => {
   }, [load]);
 
   return (
-    <main className="account-page">
-      <h1>Spielverlauf</h1>
-
-      {error && (
-        <p className="account-error" role="alert">
-          {error}
-        </p>
-      )}
-      {entries === null && !error && <p>Lädt …</p>}
-      {entries?.length === 0 && <p>Du hast noch keine beendeten Partien.</p>}
-
-      {entries && entries.length > 0 && (
-        <ul className="account-form">
-          {entries.map((entry) => {
-            const opponents = entry.seats
-              .filter((seat) => !seat.isMe)
-              .map((seat) => seat.displayName)
-              .join(", ");
-            const result =
-              entry.status === "Aborted"
-                ? statusLabels.Aborted
-                : entry.myOutcome
-                  ? outcomeLabels[entry.myOutcome]
-                  : "–";
-            return (
-              <li key={entry.sessionId}>
-                <a href={`${sessionPagePaths.historyPrefix}${entry.sessionId}`}>
-                  {gameNames[entry.gameType] ?? entry.gameType}
-                </a>{" "}
-                (
-                {entry.mode === "Singleplayer" ? "Singleplayer" : "Multiplayer"}
-                ) gegen {opponents || "–"}: <strong>{result}</strong>
-                {" – "}
-                {formatDate(entry.endedAt)}
-              </li>
-            );
-          })}
-        </ul>
-      )}
-
-      {hasMore && entries && (
-        <button type="button" onClick={() => void load(entries.length)}>
-          Weitere laden
-        </button>
-      )}
-
-      <p className="account-links">
-        <a href={pagePaths.home}>Zur Startseite</a>
-      </p>
-    </main>
+    <Page
+      title="Spielverlauf"
+      subtitle="Deine beendeten Partien – tippe eine an, um sie nachzuspielen."
+    >
+      {error && <Alert severity="error">{error}</Alert>}
+      <SectionCard>
+        {entries === null && !error && <Loading />}
+        {entries?.length === 0 && (
+          <Typography color="text.secondary">
+            Du hast noch keine beendeten Partien.
+          </Typography>
+        )}
+        {entries && entries.length > 0 && (
+          <List disablePadding>
+            {entries.map((entry) => {
+              const opponents = entry.seats
+                .filter((seat) => !seat.isMe)
+                .map((seat) => seat.displayName)
+                .join(", ");
+              return (
+                <ListItemButton
+                  key={entry.sessionId}
+                  href={`${sessionPagePaths.historyPrefix}${entry.sessionId}`}
+                  divider
+                  sx={{ gap: 1, px: 1 }}
+                >
+                  <ListItemAvatar sx={{ minWidth: 48 }}>
+                    <Avatar sx={{ bgcolor: "background.default" }}>
+                      {entry.gameType === "Kniffel" ? (
+                        <Casino color="secondary" />
+                      ) : (
+                        <GridOn color="primary" />
+                      )}
+                    </Avatar>
+                  </ListItemAvatar>
+                  <ListItemText
+                    primary={`${gameNames[entry.gameType] ?? entry.gameType} gegen ${opponents || "–"}`}
+                    secondary={formatDate(entry.endedAt)}
+                    slotProps={{ primary: { noWrap: true } }}
+                    sx={{ minWidth: 0 }}
+                  />
+                  {resultChip(entry)}
+                </ListItemButton>
+              );
+            })}
+          </List>
+        )}
+        {hasMore && entries && (
+          <Button
+            onClick={() => void load(entries.length)}
+            sx={{ alignSelf: "center" }}
+          >
+            Weitere laden
+          </Button>
+        )}
+      </SectionCard>
+    </Page>
   );
 };
 

@@ -1,27 +1,29 @@
-import React from "react";
+import { useSearchParams } from "react-router";
+import Alert from "@mui/material/Alert";
+import Button from "@mui/material/Button";
+import Stack from "@mui/material/Stack";
+import MarkEmailReadOutlined from "@mui/icons-material/MarkEmailReadOutlined";
 import { pagePaths } from "../../api/account";
-import "./AccountPages.css";
+import AuthCard from "./AuthCard";
 
 /** Target of the confirmation link (via /api/account/confirm-email): shows the result. */
-const EmailConfirmedPage: React.FC = () => {
-  const success = new URLSearchParams(window.location.search).get("success") === "true";
+const EmailConfirmedPage = () => {
+  const [query] = useSearchParams();
+  const success = query.get("success") === "true";
 
   return (
-    <main className="account-page">
-      <h1>E-Mail-Bestätigung</h1>
-      {success ? (
-        <p className="account-success" role="status">
-          Deine E-Mail-Adresse ist bestätigt. Dein Konto ist jetzt aktiv.
-        </p>
-      ) : (
-        <p className="account-error" role="alert">
-          Der Bestätigungslink ist ungültig oder abgelaufen.
-        </p>
-      )}
-      <p className="account-links">
-        <a href={pagePaths.login}>Zur Anmeldung</a>
-      </p>
-    </main>
+    <AuthCard title="E-Mail-Bestätigung" icon={<MarkEmailReadOutlined />}>
+      <Stack spacing={2}>
+        {success ? (
+          <Alert severity="success">Deine E-Mail-Adresse ist bestätigt. Dein Konto ist jetzt aktiv.</Alert>
+        ) : (
+          <Alert severity="error">Der Bestätigungslink ist ungültig oder abgelaufen.</Alert>
+        )}
+        <Button href={pagePaths.login} variant="contained">
+          Zur Anmeldung
+        </Button>
+      </Stack>
+    </AuthCard>
   );
 };
 
