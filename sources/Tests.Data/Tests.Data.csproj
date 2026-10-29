@@ -1,0 +1,7 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <ProjectReference Include="..\Data.Database\Data.Database.csproj" />
+  </ItemGroup>
+
+</Project>

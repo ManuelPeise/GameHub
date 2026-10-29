@@ -29,6 +29,7 @@
   </Folder>
   <Folder Name="/06 Tests/">
     <Project Path="Tests.Architecture/Tests.Architecture.csproj" />
+    <Project Path="Tests.Data/Tests.Data.csproj" />
     <Project Path="Tests.Integration/Tests.Integration.csproj" />
     <Project Path="Tests.Kniffel/Tests.Kniffel.csproj" />
     <Project Path="Tests.Sessions/Tests.Sessions.csproj" />

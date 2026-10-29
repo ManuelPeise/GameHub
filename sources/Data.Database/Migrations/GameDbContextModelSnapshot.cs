@@ -107,6 +107,135 @@ namespace Data.Database.Migrations
                     b.ToTable("AuditEntry", "audit");
                 });
 
+            modelBuilder.Entity("Data.Database.Entities.GameAction", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityAlwaysColumn(b.Property<long>("Id"));
+
+                    b.Property<string>("ActionType")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<string>("AiStrategyVersion")
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("PayloadJson")
+                        .HasColumnType("jsonb");
+
+                    b.Property<string>("RandomResultJson")
+                        .HasColumnType("jsonb");
+
+                    b.Property<Guid?>("SeatId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("Sequence")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid>("SessionId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("SeatId");
+
+                    b.HasIndex("SessionId", "Sequence")
+                        .IsUnique();
+
+                    b.ToTable("GameAction", "game");
+                });
+
+            modelBuilder.Entity("Data.Database.Entities.GameResult", b =>
+                {
+                    b.Property<Guid>("SessionId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("SeatId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Outcome")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)");
+
+                    b.Property<int?>("Placement")
+                        .HasColumnType("integer");
+
+                    b.Property<int?>("Score")
+                        .HasColumnType("integer");
+
+                    b.HasKey("SessionId", "SeatId");
+
+                    b.HasIndex("SeatId");
+
+                    b.ToTable("GameResult", "game");
+                });
+
+            modelBuilder.Entity("Data.Database.Entities.GameSession", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("CurrentSeatId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("GameType")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)");
+
+                    b.Property<DateTimeOffset>("LastActivityAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Mode")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)");
+
+                    b.Property<Guid>("OwnerUserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<long>("RngSeed")
+                        .HasColumnType("bigint");
+
+                    b.Property<string>("StateJson")
+                        .IsRequired()
+                        .HasColumnType("jsonb");
+
+                    b.Property<int>("StateVersion")
+                        .IsConcurrencyToken()
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("OwnerUserId", "GameType")
+                        .IsUnique()
+                        .HasDatabaseName("IX_GameSession_OneOpenSingleplayerPerOwnerAndGame")
+                        .HasFilter("\"Mode\" = 'Singleplayer' AND \"Status\" IN ('Running', 'Paused')");
+
+                    b.HasIndex("Status", "LastActivityAt");
+
+                    b.ToTable("GameSession", "game");
+                });
+
             modelBuilder.Entity("Data.Database.Entities.Role", b =>
                 {
                     b.Property<Guid>("Id")
@@ -147,6 +276,63 @@ namespace Data.Database.Migrations
                             ConcurrencyStamp = "role-administrator-v1",
                             Name = "Administrator",
                             NormalizedName = "ADMINISTRATOR"
+                        });
+                });
+
+            modelBuilder.Entity("Data.Database.Entities.Seat", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("AiDifficulty")
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)");
+
+                    b.Property<string>("AiStrategyVersion")
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)");
+
+                    b.Property<string>("ConnectionStatus")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)");
+
+                    b.Property<DateTimeOffset?>("DisconnectedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("DisplayName")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)");
+
+                    b.Property<string>("Kind")
+                        .IsRequired()
+                        .HasMaxLength(8)
+                        .HasColumnType("character varying(8)");
+
+                    b.Property<int>("Order")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid>("SessionId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Symbol")
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)");
+
+                    b.Property<Guid?>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId");
+
+                    b.HasIndex("SessionId", "Order")
+                        .IsUnique();
+
+                    b.ToTable("Seat", "game", t =>
+                        {
+                            t.HasCheckConstraint("CK_Seat_HumanHasUser_AiHasDifficulty", "(\"Kind\" = 'Human' AND \"UserId\" IS NOT NULL AND \"AiDifficulty\" IS NULL AND \"AiStrategyVersion\" IS NULL) OR (\"Kind\" = 'Ai' AND \"UserId\" IS NULL AND \"AiDifficulty\" IS NOT NULL AND \"AiStrategyVersion\" IS NOT NULL)");
                         });
                 });
 
@@ -334,6 +520,60 @@ namespace Data.Database.Migrations
                     b.ToTable("UserTokens", "identity");
                 });
 
+            modelBuilder.Entity("Data.Database.Entities.GameAction", b =>
+                {
+                    b.HasOne("Data.Database.Entities.Seat", null)
+                        .WithMany()
+                        .HasForeignKey("SeatId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("Data.Database.Entities.GameSession", null)
+                        .WithMany()
+                        .HasForeignKey("SessionId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Data.Database.Entities.GameResult", b =>
+                {
+                    b.HasOne("Data.Database.Entities.Seat", null)
+                        .WithMany()
+                        .HasForeignKey("SeatId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Data.Database.Entities.GameSession", null)
+                        .WithMany()
+                        .HasForeignKey("SessionId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Data.Database.Entities.GameSession", b =>
+                {
+                    b.HasOne("Data.Database.Entities.User", null)
+                        .WithMany()
+                        .HasForeignKey("OwnerUserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Data.Database.Entities.Seat", b =>
+                {
+                    b.HasOne("Data.Database.Entities.GameSession", "Session")
+                        .WithMany("Seats")
+                        .HasForeignKey("SessionId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Data.Database.Entities.User", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.Navigation("Session");
+                });
+
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRoleClaim<System.Guid>", b =>
                 {
                     b.HasOne("Data.Database.Entities.Role", null)
@@ -383,6 +623,11 @@ namespace Data.Database.Migrations
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+                });
+
+            modelBuilder.Entity("Data.Database.Entities.GameSession", b =>
+                {
+                    b.Navigation("Seats");
                 });
 #pragma warning restore 612, 618
         }
