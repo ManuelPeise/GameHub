@@ -1,0 +1,7 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <ProjectReference Include="..\Logic.Sessions\Logic.Sessions.csproj" />
+  </ItemGroup>
+
+</Project>

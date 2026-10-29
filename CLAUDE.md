@@ -18,16 +18,35 @@ Ausblick (nicht MVP): lernende KI, Quizspiel mit 3D-Darstellung.
 
 ```
 sources/        gesamter Quellcode
-  GameHubApp.slnx            Solution (XML-Format)
-  src/                       .NET-Projekte
-  web/gamehub-web/           React + TypeScript + Vite
-  tests/                     Testprojekte
+  GameHubApp.slnx            Solution (XML-Format); alle Projekte liegen direkt in sources/
+  Web.App/                   React + TypeScript + Vite (Web.App.esproj)
+  Services.*/                Api, AppHost, ServiceDefaults, DbTools
+  Logic.*/                   Core, TicTacToe, Kniffel, Shared, Sessions, Users, Administration
+  Data.*/                    Database, DataAccessor
+  Shared.Models/             DTOs für API/SignalR, AppSettings
+  Tests.*/                   TicTacToe, Kniffel, Sessions, Architecture, Integration
 docker/         Dockerfile, compose.testing.yaml, compose.live.yaml, *.env.example
 user-stories/   eine Datei pro Story (US-<Nr>-<titel>.md), nur lokal – von Git ignoriert
 ```
 
-Projektmappenordner in Visual Studio: 01 Core, 02 Services, 03 Logic, 04 Data, 05 Shared,
-06 Tests, 07 Documentations (Zuordnung siehe Konzept, Abschnitt Projektstruktur).
+Projektnamen folgen dem Schema `<Bereich>.<Name>`; der Bereich entspricht dem Projektmappenordner:
+01 Web, 02 Services, 03 Logic, 04 Data, 05 Shared, 06 Tests, 07 Documentations.
+Bereits vorhanden: Web.App, Logic.Shared, Data.Database, Data.DataAccessor, Shared.Models.
+Die übrigen Projekte werden mit ihren User Stories angelegt (Zuordnung im Konzept, Abschnitt Projektstruktur).
+
+| Projekt | Darf referenzieren |
+| --- | --- |
+| Logic.Core | nichts |
+| Logic.TicTacToe, Logic.Kniffel | nur Logic.Core |
+| Shared.Models | nur Konfigurations-Abstraktionen |
+| Logic.Shared | Shared.Models |
+| Logic.Sessions, Logic.Users, Logic.Administration | Logic.Core, Logic.Shared, Logic.TicTacToe, Logic.Kniffel, Shared.Models |
+| Data.Database | Shared.Models |
+| Data.DataAccessor | Data.Database, Logic.Shared, Shared.Models |
+| Services.Api | Logic.*, Data.DataAccessor, Shared.Models, Services.ServiceDefaults |
+| Services.DbTools | Logic.Users, Data.DataAccessor, Shared.Models |
+| Services.AppHost | Services.Api, Services.DbTools, Web.App (nur Orchestrierung) |
+| Web.App | nur die API über HTTP/SignalR |
 
 ## Technologie
 
@@ -43,16 +62,17 @@ Alle .NET-Befehle aus `sources/`:
 ```
 dotnet build GameHubApp.slnx
 dotnet test GameHubApp.slnx
-dotnet run --project src/GameHub.AppHost      # startet DB, Mailpit, API, Frontend
+dotnet run --project Services.AppHost         # startet DB, Mailpit, API, Web.App
 ```
 
-Frontend aus `sources/web/gamehub-web/`: `npm ci`, `npm run dev`, `npm run build`, `npm run lint`.
+Frontend aus `sources/Web.App/`: `npm ci`, `npm run dev`, `npm run build`, `npm run lint`.
+Details zum Frontend in `sources/Web.App/CLAUDE.md`.
 
 ## Architekturregeln (nicht verletzen)
 
 1. **Ein Zugpfad:** Jede Spielaktion – Mensch oder KI, Singleplayer oder Multiplayer – läuft durch
    den `SubmitActionHandler`: laden, Zugrecht prüfen, `Validate`, `Apply`, speichern, Event senden.
-2. **Spieldomäne ist rein:** `GameHub.Games.*` kennen nur `GameHub.Core`. Keine Abhängigkeit zu UI,
+2. **Spieldomäne ist rein:** `Logic.TicTacToe`, `Logic.Kniffel` (und künftige Spiele) kennen nur `Logic.Core`. Keine Abhängigkeit zu UI,
    Datenbank, Netzwerk oder Konfiguration. Kein generisches Regelmodell für alle Spiele.
 3. **KI schlägt nur vor:** Strategien implementieren `IAiStrategy<TView, TAction>`, bekommen eine Sicht
    (nur Informationen, die auch ein Mensch hätte) und geben eine Aktion zurück. Sie ändern nie Zustand.
@@ -60,13 +80,14 @@ Frontend aus `sources/web/gamehub-web/`: `npm ci`, `npm run dev`, `npm run build
 5. **Zugprotokoll ist unveränderlich:** `GameAction` wird nie geändert oder gelöscht. Zustand und
    GameAction in derselben Transaktion; Zufallsergebnisse und KI-Strategieversion mitspeichern.
 6. **Optimistisches Locking** über `StateVersion` gegen doppelte Züge.
-7. **Konfiguration nur über `AppSettings`** (typisiert, `ValidateOnStart`). Keine Magic Numbers für
-   Zeitlimits usw. im Code; Dienste erhalten nur ihren Abschnitt per `IOptions<T>`.
+7. **Konfiguration nur über `IAppSettings`** (`Shared.Models`): typisierte Abschnitte, beim Start validiert.
+   Nur `AppSettings` liest `IConfiguration`; alle anderen Klassen erhalten `IAppSettings`, nie
+   `IConfiguration`. Keine Magic Numbers für Zeitlimits usw. im Code. Spielprojekte kennen keine Konfiguration.
 8. **Keine Geheimnisse im Repo:** Passwörter und Verbindungsdaten nur über User Secrets, Aspire,
    Umgebungs- oder Release-Variablen (`App__Email__Password`). Nur `*.env.example` einchecken.
 9. **Migrationen nie beim App-Start**, sondern als Migrationsbundle im Deployment.
 10. **Personenbezogene Daten löschen = pseudonymisieren** (Status `Deleted`); Spielverläufe bleiben.
-11. Abhängigkeitsregeln zwischen Projekten werden durch `GameHub.Architecture.Tests` geprüft.
+11. Abhängigkeitsregeln (Tabelle oben) werden durch `Tests.Architecture` geprüft.
 
 ## Konventionen
 
@@ -74,10 +95,11 @@ Frontend aus `sources/web/gamehub-web/`: `npm ci`, `npm run dev`, `npm run build
   Durchgesetzt über `.gitattributes` und `.editorconfig` – nie CRLF-Dateien erzeugen.
 - **C#:** file-scoped Namespaces, Nullable aktiviert, Warnungen als Fehler, `sealed` wo sinnvoll,
   async durchgängig mit `CancellationToken`.
-- **Namen:** Projekte `GameHub.<Bereich>`; Container `gamehub-app`, `gamehub-db`, `gamehub-migrate`;
-  SignalR-Hub `GameSessionHub`.
-- **TypeScript-Typen** für API und SignalR werden aus `GameHub.Contracts` erzeugt, nicht von Hand
-  gepflegt. `GameHub.Contracts` zielt auf .NET Standard 2.1.
+- **Namen:** Projekte `<Bereich>.<Name>` direkt unter `sources/`; Namespace = Projektname plus Ordner
+  (z. B. `Logic.Sessions.Commands`); abstrakte Basisklassen mit Präfix `A` (z. B. `ALogicBase`),
+  Interfaces mit `I`. Container `gamehub-app`, `gamehub-db`, `gamehub-migrate`; SignalR-Hub `GameSessionHub`.
+- **TypeScript-Typen** für API und SignalR werden aus den DTOs in `Shared.Models` erzeugt, nicht von
+  Hand gepflegt.
 - **UI-Texte** auf Deutsch.
 
 ## Tests

@@ -1,0 +1,7 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <ProjectReference Include="..\Logic.TicTacToe\Logic.TicTacToe.csproj" />
+  </ItemGroup>
+
+</Project>

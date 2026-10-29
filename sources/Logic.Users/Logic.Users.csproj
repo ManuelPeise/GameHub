@@ -1,0 +1,11 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <ProjectReference Include="..\Logic.Core\Logic.Core.csproj" />
+    <ProjectReference Include="..\Logic.Shared\Logic.Shared.csproj" />
+    <ProjectReference Include="..\Logic.TicTacToe\Logic.TicTacToe.csproj" />
+    <ProjectReference Include="..\Logic.Kniffel\Logic.Kniffel.csproj" />
+    <ProjectReference Include="..\Shared.Models\Shared.Models.csproj" />
+  </ItemGroup>
+
+</Project>

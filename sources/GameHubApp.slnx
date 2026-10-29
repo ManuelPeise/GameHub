@@ -1,11 +1,42 @@
 <Solution>
-  <Folder Name="/01 Core/" />
-  <Folder Name="/02 Services/" />
-  <Folder Name="/03 Logic/" />
-  <Folder Name="/04 Data/" />
+  <Folder Name="/01 Web/">
+    <Project Path="Web.App/Web.App.esproj">
+      <Build />
+      <Deploy />
+    </Project>
+  </Folder>
+  <Folder Name="/02 Services/">
+    <Project Path="Services.Api/Services.Api.csproj" />
+    <Project Path="Services.AppHost/Services.AppHost.csproj" />
+    <Project Path="Services.DbTools/Services.DbTools.csproj" />
+    <Project Path="Services.ServiceDefaults/Services.ServiceDefaults.csproj" />
+  </Folder>
+  <Folder Name="/03 Logic/">
+    <Project Path="Logic.Administration/Logic.Administration.csproj" />
+    <Project Path="Logic.Core/Logic.Core.csproj" />
+    <Project Path="Logic.Kniffel/Logic.Kniffel.csproj" />
+    <Project Path="Logic.Sessions/Logic.Sessions.csproj" />
+    <Project Path="Logic.Shared/Logic.Shared.csproj" Id="daab70fb-f4dc-452b-8ce6-5d6e9325b18f" />
+    <Project Path="Logic.TicTacToe/Logic.TicTacToe.csproj" />
+    <Project Path="Logic.Users/Logic.Users.csproj" />
+  </Folder>
+  <Folder Name="/04 Data/">
+    <Project Path="Data.DataAccessor/Data.DataAccessor.csproj" Id="41fb575f-0a36-4dae-bf63-59393b9fa989" />
+    <Project Path="Data.Database/Data.Database.csproj" Id="d577107d-063d-468b-b210-105e337d37b0" />
+  </Folder>
   <Folder Name="/05 Shared/">
     <Project Path="Shared.Models/Shared.Models.csproj" Id="0451db2c-c3b9-4860-8f18-f418365df473" />
   </Folder>
-  <Folder Name="/06 Tests/" />
-  <Folder Name="/07 Documentations/" />
+  <Folder Name="/06 Tests/">
+    <Project Path="Tests.Architecture/Tests.Architecture.csproj" />
+    <Project Path="Tests.Integration/Tests.Integration.csproj" />
+    <Project Path="Tests.Kniffel/Tests.Kniffel.csproj" />
+    <Project Path="Tests.Sessions/Tests.Sessions.csproj" />
+    <Project Path="Tests.TicTacToe/Tests.TicTacToe.csproj" />
+  </Folder>
+  <Folder Name="/07 Documentations/">
+    <File Path="../CLAUDE.md" />
+    <File Path="../README.md" />
+    <File Path="Web.App/CLAUDE.md" />
+  </Folder>
 </Solution>
