@@ -32,6 +32,7 @@
     <Project Path="Tests.Integration/Tests.Integration.csproj" />
     <Project Path="Tests.Kniffel/Tests.Kniffel.csproj" />
     <Project Path="Tests.Sessions/Tests.Sessions.csproj" />
+    <Project Path="Tests.Shared/Tests.Shared.csproj" />
     <Project Path="Tests.TicTacToe/Tests.TicTacToe.csproj" />
   </Folder>
   <Folder Name="/07 Documentations/">

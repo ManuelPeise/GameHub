@@ -1,18 +1,18 @@
-using Microsoft.Extensions.Configuration;
+using Shared.Models.Interfaces;
 
 namespace Logic.Shared;
 
+/// <summary>
+/// Base class for logic classes. Settings are passed as <see cref="IAppSettings"/>;
+/// logic classes never read <c>IConfiguration</c> directly (CLAUDE.md rule 7).
+/// </summary>
 public abstract class ALogicBase
 {
-    private readonly IConfiguration? _configuration;
-
-    protected ALogicBase()
+    protected ALogicBase(IAppSettings appSettings)
     {
-        
+        ArgumentNullException.ThrowIfNull(appSettings);
+        AppSettings = appSettings;
     }
 
-    protected ALogicBase(IConfiguration configuration): base()
-    {
-        _configuration = configuration;
-    }
+    protected IAppSettings AppSettings { get; }
 }
