@@ -1,0 +1,83 @@
+# Build and test on every push and pull request (US-032).
+# Required status checks for the main branch are set in GitHub (Settings → Branches), see README.
+name: CI
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  line-endings:
+    name: Zeilenenden
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: LF in allen eingecheckten Textdateien
+        run: bash .github/scripts/check-line-endings.sh
+
+  dotnet:
+    name: .NET Build und Tests
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: sources
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: sources/global.json
+
+      - name: Restore
+        # The solution also contains Web.App.esproj (JavaScript SDK); the frontend has its own job,
+        # so only the .NET projects are built here.
+        run: for project in */*.csproj; do dotnet restore "$project"; done
+
+      - name: Build
+        run: for project in */*.csproj; do dotnet build "$project" --configuration Release --no-restore || exit 1; done
+
+      - name: Unit-, Architektur- und Vertragstests
+        # Includes Tests.Architecture (dependency rules) and Tests.Shared (generated TypeScript types up to date).
+        run: |
+          for project in Tests.*/*.csproj; do
+            dotnet test "$project" --configuration Release --no-build --logger "trx;LogFilePrefix=$(basename "$project" .csproj)" --results-directory ../test-results || failed=1
+          done
+          exit ${failed:-0}
+
+      - name: Testergebnisse hochladen
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results
+          path: test-results
+          if-no-files-found: ignore
+
+  web:
+    name: Frontend Lint, Typprüfung und Build
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: sources/Web.App
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: sources/Web.App/package-lock.json
+
+      - run: npm ci
+      - name: Lint
+        run: npm run lint
+      - name: Typprüfung und Build
+        # "build" runs tsc -b (type check) before vite build.
+        run: npm run build

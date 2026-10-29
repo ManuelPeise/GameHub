@@ -84,3 +84,24 @@ dotnet test GameHubApp.slnx
 ```
 
 Frontend: in `sources/Web.App` `npm run build` und `npm run lint`.
+
+TypeScript-Typen aus `Shared.Models` neu erzeugen (der Test in `Tests.Shared` schlägt fehl, wenn sie veraltet sind):
+
+```
+cd sources
+$env:GAMEHUB_UPDATE_CONTRACTS = "1"; dotnet test Tests.Shared; Remove-Item Env:GAMEHUB_UPDATE_CONTRACTS
+```
+
+## CI (GitHub Actions)
+
+`.github/workflows/ci.yml` läuft bei jedem Push und Pull Request mit drei Jobs:
+
+| Job | Prüft |
+| --- | --- |
+| Zeilenenden | keine CRLF-Dateien im Repository (außer `*.cmd`, `*.bat`, `*.sln`) |
+| .NET Build und Tests | Build aller .NET-Projekte (Release), alle `Tests.*` inkl. Architektur- und Vertragstests; Ergebnisse als Artefakt `test-results` |
+| Frontend Lint, Typprüfung und Build | `npm ci`, `npm run lint`, `npm run build` (inkl. `tsc -b`) |
+
+Damit ein Pull Request bei Fehlern nicht gemergt werden kann, einmalig in GitHub einrichten:
+Settings → Branches → Branch protection rule für `Master` → „Require status checks to pass before merging“ →
+die drei Checks `Zeilenenden`, `.NET Build und Tests` und `Frontend Lint, Typprüfung und Build` auswählen.
