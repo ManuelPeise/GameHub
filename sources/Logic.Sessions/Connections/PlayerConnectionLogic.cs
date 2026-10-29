@@ -81,6 +81,57 @@ public sealed class PlayerConnectionLogic(
     }
 
     /// <summary>
+    /// Multiplayer turn time limit: a connected human who did not act within <c>Game.TurnTimeout</c> gets a
+    /// TurnTimeout entry and is then removed like after a failed reconnect. Singleplayer has no limit.
+    /// </summary>
+    public async Task RemoveTurnTimeoutsAsync(CancellationToken cancellationToken)
+    {
+        var cutoff = timeProvider.GetUtcNow() - appSettings.Game.TurnTimeout;
+        foreach (var seat in await repository.GetTurnTimeoutsAsync(cutoff, cancellationToken).ConfigureAwait(false))
+        {
+            if (await WriteTurnTimeoutAsync(seat, cutoff, cancellationToken).ConfigureAwait(false))
+            {
+                await RemovePlayerAsync(seat.SessionId, seat.SeatId, RemovalReasons.TurnTimeout, cancellationToken).ConfigureAwait(false);
+            }
+        }
+    }
+
+    /// <summary>Logs TurnTimeout if the seat is still at turn and over time (a move may have arrived meanwhile).</summary>
+    private async Task<bool> WriteTurnTimeoutAsync(PlayerSeatRef seat, DateTimeOffset cutoff, CancellationToken cancellationToken)
+    {
+        var session = await repository.GetAsync(seat.SessionId, cancellationToken).ConfigureAwait(false);
+        if (session is null
+            || session.Mode != GameMode.Multiplayer
+            || session.Status != SessionStatus.Running
+            || session.CurrentSeatId != seat.SeatId
+            || session.TurnStartedAt is not { } turnStartedAt
+            || turnStartedAt > cutoff)
+        {
+            return false;
+        }
+
+        var write = new ActionWrite(
+            session.Id,
+            session.StateVersion,
+            new GameActionRecord(
+                session.Id,
+                seat.SeatId,
+                session.LastSequence + 1,
+                SystemActionTypes.TurnTimeout,
+                null,
+                null,
+                null,
+                timeProvider.GetUtcNow()),
+            session.StateJson,
+            session.Status,
+            session.CurrentSeatId,
+            []);
+
+        // A version conflict means a move or another change came first: no timeout then.
+        return await repository.SaveActionAsync(write, cancellationToken).ConfigureAwait(false);
+    }
+
+    /// <summary>
     /// Removes a seat from a running session: it is skipped and not scored. If only one active seat is
     /// left, the game ends and that seat wins.
     /// </summary>
@@ -138,7 +189,8 @@ public sealed class PlayerConnectionLogic(
                 finished ? SessionStatus.Finished : SessionStatus.Running,
                 currentSeatId,
                 results,
-                [new SeatStatusChange(seat.Id, SeatConnectionStatus.Removed, null)]);
+                [new SeatStatusChange(seat.Id, SeatConnectionStatus.Removed, null)],
+                currentSeatId != session.CurrentSeatId ? now : null);
 
             if (!await repository.SaveActionAsync(write, cancellationToken).ConfigureAwait(false))
             {

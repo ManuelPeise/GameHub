@@ -42,6 +42,12 @@ public interface IGameSessionRepository
     /// <summary>Disconnected human seats of running multiplayer sessions whose disconnect happened at or before the cutoff.</summary>
     Task<IReadOnlyList<PlayerSeatRef>> GetExpiredDisconnectedSeatsAsync(DateTimeOffset cutoff, CancellationToken cancellationToken);
 
+    /// <summary>
+    /// Current seats of running multiplayer sessions that are human, connected and whose turn started at or
+    /// before the cutoff (turn time limit).
+    /// </summary>
+    Task<IReadOnlyList<PlayerSeatRef>> GetTurnTimeoutsAsync(DateTimeOffset cutoff, CancellationToken cancellationToken);
+
     /// <summary>Sets the status (e.g. Aborted) with version check; false on conflict.</summary>
     Task<bool> SetStatusAsync(Guid sessionId, int expectedVersion, SessionStatus status, DateTimeOffset at, CancellationToken cancellationToken);
 

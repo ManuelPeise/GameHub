@@ -27,7 +27,11 @@ public sealed record SessionSnapshot(
     int StateVersion,
     long RngSeed,
     int LastSequence,
-    IReadOnlyList<SeatSnapshot> Seats);
+    IReadOnlyList<SeatSnapshot> Seats)
+{
+    /// <summary>Start of the current turn (turn time limit in multiplayer).</summary>
+    public DateTimeOffset? TurnStartedAt { get; init; }
+}
 
 /// <summary>Seat values used when creating or extending a session.</summary>
 public sealed record SeatCreateWrite(
@@ -98,7 +102,8 @@ public sealed record ActionWrite(
     SessionStatus NewStatus,
     Guid? CurrentSeatId,
     IReadOnlyList<SeatResultWrite> Results,
-    IReadOnlyList<SeatStatusChange>? SeatChanges = null);
+    IReadOnlyList<SeatStatusChange>? SeatChanges = null,
+    DateTimeOffset? TurnStartedAt = null);
 
 /// <summary>Event after an applied action (sent to the clients with US-013).</summary>
 public sealed record GameActionApplied(

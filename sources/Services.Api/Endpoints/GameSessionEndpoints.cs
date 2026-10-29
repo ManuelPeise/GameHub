@@ -1,6 +1,8 @@
 using System.Security.Claims;
 using Logic.Sessions;
+using Logic.Shared.Models;
 using Shared.Models.Games;
+using Shared.Models.Interfaces;
 using Services.Api.Authorization;
 
 namespace Services.Api.Endpoints;
@@ -28,6 +30,7 @@ public static class GameSessionEndpoints
     private static async Task<IResult> CreateAsync(
         CreateSessionRequest request,
         SessionLifecycleLogic logic,
+        IAppSettings appSettings,
         ClaimsPrincipal principal,
         CancellationToken cancellationToken)
     {
@@ -38,12 +41,13 @@ public static class GameSessionEndpoints
         }
 
         var outcome = await logic.CreateAsync(userId.Value, request, cancellationToken);
-        return ToSessionResult(outcome);
+        return ToSessionResult(appSettings, outcome);
     }
 
     private static async Task<IResult> GetAsync(
         Guid id,
         SessionLifecycleLogic logic,
+        IAppSettings appSettings,
         ClaimsPrincipal principal,
         CancellationToken cancellationToken)
     {
@@ -54,12 +58,13 @@ public static class GameSessionEndpoints
         }
 
         var outcome = await logic.GetAsync(userId.Value, id, cancellationToken);
-        return ToSessionResult(outcome);
+        return ToSessionResult(appSettings, outcome);
     }
 
     private static async Task<IResult> JoinAsync(
         JoinSessionRequest request,
         SessionLifecycleLogic logic,
+        IAppSettings appSettings,
         ClaimsPrincipal principal,
         CancellationToken cancellationToken)
     {
@@ -70,7 +75,7 @@ public static class GameSessionEndpoints
         }
 
         var outcome = await logic.JoinAsync(userId.Value, request, cancellationToken);
-        return ToSessionResult(outcome);
+        return ToSessionResult(appSettings, outcome);
     }
 
     private static async Task<IResult> ListOpenLobbiesAsync(
@@ -91,6 +96,7 @@ public static class GameSessionEndpoints
     private static async Task<IResult> JoinByIdAsync(
         Guid id,
         SessionLifecycleLogic logic,
+        IAppSettings appSettings,
         ClaimsPrincipal principal,
         CancellationToken cancellationToken)
     {
@@ -100,13 +106,14 @@ public static class GameSessionEndpoints
             return Results.Unauthorized();
         }
 
-        return ToSessionResult(await logic.JoinByIdAsync(userId.Value, id, cancellationToken));
+        return ToSessionResult(appSettings, await logic.JoinByIdAsync(userId.Value, id, cancellationToken));
     }
 
     private static async Task<IResult> AddAiSeatAsync(
         Guid id,
         AddAiSeatRequest request,
         SessionLifecycleLogic logic,
+        IAppSettings appSettings,
         ClaimsPrincipal principal,
         CancellationToken cancellationToken)
     {
@@ -116,13 +123,14 @@ public static class GameSessionEndpoints
             return Results.Unauthorized();
         }
 
-        return ToSessionResult(await logic.AddAiSeatAsync(userId.Value, id, request, cancellationToken));
+        return ToSessionResult(appSettings, await logic.AddAiSeatAsync(userId.Value, id, request, cancellationToken));
     }
 
     private static async Task<IResult> RemoveAiSeatAsync(
         Guid id,
         Guid seatId,
         SessionLifecycleLogic logic,
+        IAppSettings appSettings,
         ClaimsPrincipal principal,
         CancellationToken cancellationToken)
     {
@@ -132,12 +140,13 @@ public static class GameSessionEndpoints
             return Results.Unauthorized();
         }
 
-        return ToSessionResult(await logic.RemoveAiSeatAsync(userId.Value, id, seatId, cancellationToken));
+        return ToSessionResult(appSettings, await logic.RemoveAiSeatAsync(userId.Value, id, seatId, cancellationToken));
     }
 
     private static async Task<IResult> StartAsync(
         Guid id,
         SessionLifecycleLogic logic,
+        IAppSettings appSettings,
         ClaimsPrincipal principal,
         CancellationToken cancellationToken)
     {
@@ -148,12 +157,13 @@ public static class GameSessionEndpoints
         }
 
         var outcome = await logic.StartAsync(userId.Value, id, cancellationToken);
-        return ToSessionResult(outcome);
+        return ToSessionResult(appSettings, outcome);
     }
 
     private static async Task<IResult> RematchAsync(
         Guid id,
         SessionLifecycleLogic logic,
+        IAppSettings appSettings,
         ClaimsPrincipal principal,
         CancellationToken cancellationToken)
     {
@@ -164,13 +174,14 @@ public static class GameSessionEndpoints
         }
 
         var outcome = await logic.RematchAsync(userId.Value, id, cancellationToken);
-        return ToSessionResult(outcome);
+        return ToSessionResult(appSettings, outcome);
     }
 
     private static async Task<IResult> SubmitActionAsync(
         Guid id,
         SubmitSessionActionRequest request,
         SessionLifecycleLogic logic,
+        IAppSettings appSettings,
         SubmitActionHandler handler,
         ClaimsPrincipal principal,
         CancellationToken cancellationToken)
@@ -184,7 +195,7 @@ public static class GameSessionEndpoints
         var access = await logic.GetAsync(userId.Value, id, cancellationToken);
         if (access is not SessionLifecycleOutcome.Success allowed)
         {
-            return ToSessionResult(access);
+            return ToSessionResult(appSettings, access);
         }
 
         var result = await handler.HandleAsync(
@@ -204,9 +215,9 @@ public static class GameSessionEndpoints
         };
     }
 
-    private static IResult ToSessionResult(SessionLifecycleOutcome outcome) => outcome switch
+    private static IResult ToSessionResult(IAppSettings appSettings, SessionLifecycleOutcome outcome) => outcome switch
     {
-        SessionLifecycleOutcome.Success success => Results.Ok(ToDto(success)),
+        SessionLifecycleOutcome.Success success => Results.Ok(ToDto(success, appSettings.Game.TurnTimeout)),
         SessionLifecycleOutcome.Failure failure when failure.Kind == SessionLifecycleFailureKind.NotFound =>
             Results.NotFound(new { error = failure.Error }),
         SessionLifecycleOutcome.Failure failure when failure.Kind == SessionLifecycleFailureKind.Forbidden =>
@@ -218,7 +229,7 @@ public static class GameSessionEndpoints
         _ => Results.UnprocessableEntity(),
     };
 
-    private static SessionDto ToDto(SessionLifecycleOutcome.Success success) =>
+    private static SessionDto ToDto(SessionLifecycleOutcome.Success success, TimeSpan turnTimeout) =>
         new(
             success.Session.Id,
             success.Session.GameType,
@@ -235,7 +246,18 @@ public static class GameSessionEndpoints
                 seat.UserId,
                 seat.ConnectionStatus))],
             success.Session.InviteCode,
-            success.MySeatId);
+            success.MySeatId,
+            success.Session.CurrentSeatId,
+            TurnDeadline(success.Session, turnTimeout));
+
+    /// <summary>Deadline of the seat at turn; only for connected humans in running multiplayer games.</summary>
+    private static DateTimeOffset? TurnDeadline(SessionSnapshot session, TimeSpan turnTimeout) =>
+        session is { Mode: GameMode.Multiplayer, Status: SessionStatus.Running, TurnStartedAt: { } startedAt }
+        && session.Seats.Any(seat => seat.Id == session.CurrentSeatId
+            && seat.Kind == SeatKind.Human
+            && seat.ConnectionStatus == SeatConnectionStatus.Connected)
+            ? startedAt + turnTimeout
+            : null;
 
     private static Guid? GetUserId(ClaimsPrincipal principal) =>
         Guid.TryParse(principal.FindFirstValue(ClaimTypes.NameIdentifier), out var userId) ? userId : null;

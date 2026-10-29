@@ -28,7 +28,9 @@ public sealed record SessionDto(
     string StateJson,
     IReadOnlyList<SeatDto> Seats,
     string? InviteCode,
-    Guid? MySeatId);
+    Guid? MySeatId,
+    Guid? CurrentSeatId,
+    DateTimeOffset? TurnDeadline);
 
 /// <summary>Owner adds an AI seat to a multiplayer lobby.</summary>
 public sealed record AddAiSeatRequest(string Difficulty);

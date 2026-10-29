@@ -83,7 +83,10 @@ internal sealed class InMemoryGameSessionRepository : IGameSessionRepository
                 seat.UserId,
                 seat.ConnectionStatus,
                 seat.AiDifficulty,
-                seat.AiStrategyVersion))]);
+                seat.AiStrategyVersion))])
+        {
+            TurnStartedAt = write.Status == SessionStatus.Running ? write.CreatedAt : null,
+        };
         return Task.FromResult(true);
     }
 
@@ -178,6 +181,7 @@ internal sealed class InMemoryGameSessionRepository : IGameSessionRepository
             CurrentSeatId = write.CurrentSeatId,
             StateJson = write.StateJson,
             StateVersion = session.StateVersion + 1,
+            TurnStartedAt = write.UpdatedAt,
         };
 
         return Task.FromResult(true);
@@ -220,6 +224,19 @@ internal sealed class InMemoryGameSessionRepository : IGameSessionRepository
                     .Select(seat => new PlayerSeatRef(s.Id, seat.Id, seat.UserId!.Value))),
         ]);
 
+    public Task<IReadOnlyList<PlayerSeatRef>> GetTurnTimeoutsAsync(DateTimeOffset cutoff, CancellationToken cancellationToken) =>
+        Task.FromResult<IReadOnlyList<PlayerSeatRef>>(
+        [
+            .. _sessions.Values
+                .Where(s => s.Mode == GameMode.Multiplayer && s.Status == SessionStatus.Running && s.TurnStartedAt is { } at && at <= cutoff)
+                .SelectMany(s => s.Seats
+                    .Where(seat => seat.Id == s.CurrentSeatId
+                        && seat.Kind == SeatKind.Human
+                        && seat.UserId is not null
+                        && seat.ConnectionStatus == SeatConnectionStatus.Connected)
+                    .Select(seat => new PlayerSeatRef(s.Id, seat.Id, seat.UserId!.Value))),
+        ]);
+
     public Task<bool> SetStatusAsync(Guid sessionId, int expectedVersion, SessionStatus status, DateTimeOffset at, CancellationToken cancellationToken)
     {
         if (!_sessions.TryGetValue(sessionId, out var session) || session.StateVersion != expectedVersion)
@@ -227,7 +244,7 @@ internal sealed class InMemoryGameSessionRepository : IGameSessionRepository
             return Task.FromResult(false);
         }
 
-        _sessions[sessionId] = session with { Status = status, CurrentSeatId = null, StateVersion = expectedVersion + 1 };
+        _sessions[sessionId] = session with { Status = status, CurrentSeatId = null, StateVersion = expectedVersion + 1, TurnStartedAt = null };
         return Task.FromResult(true);
     }
 
@@ -260,6 +277,7 @@ internal sealed class InMemoryGameSessionRepository : IGameSessionRepository
             StateVersion = write.ExpectedVersion + 1,
             Status = write.NewStatus,
             LastSequence = write.Action.Sequence,
+            TurnStartedAt = write.NewStatus != SessionStatus.Running ? null : write.TurnStartedAt ?? session.TurnStartedAt,
         };
         return Task.FromResult(true);
     }

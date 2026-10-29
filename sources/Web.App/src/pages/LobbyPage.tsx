@@ -1,6 +1,7 @@
 import React from "react";
 import { getErrorMessage, sendRequest } from "../hooks/apiClient";
 import ConnectionBanner from "../components/ConnectionBanner";
+import TurnTimer from "../components/TurnTimer";
 import { useGameSessionEvents } from "../hooks/gameHub";
 import {
   difficultyOptions,
@@ -153,6 +154,7 @@ const LobbyPage: React.FC<LobbyPageProps> = ({ sessionId, inviteCode }) => {
   }
 
   const mySeat = session.seats.find((seat) => seat.id === session.mySeatId);
+  const currentSeat = session.seats.find((seat) => seat.id === session.currentSeatId);
   const canStart = session.status === "Lobby" && mySeat?.order === 0;
   const inviteLink = session.inviteCode ? `${window.location.origin}${sessionPagePaths.joinPrefix}${session.inviteCode}` : null;
 
@@ -224,7 +226,15 @@ const LobbyPage: React.FC<LobbyPageProps> = ({ sessionId, inviteCode }) => {
       )}
 
       {session.status === "Running" && (
-        <p className="account-success">Die Partie läuft. Die Spielansicht folgt in den nächsten Stories.</p>
+        <p className="account-success">
+          Die Partie läuft.
+          {currentSeat && (
+            <>
+              {" "}
+              Am Zug: {currentSeat.id === session.mySeatId ? "du" : currentSeat.displayName} <TurnTimer deadline={session.turnDeadline} />
+            </>
+          )}
+        </p>
       )}
 
       {session.status === "Finished" && <p className="account-success">Die Partie ist beendet.</p>}

@@ -84,7 +84,8 @@ public sealed class SubmitActionHandler(
             applied.StateJson,
             progress.IsFinished ? SessionStatus.Finished : SessionStatus.Running,
             progress.CurrentSeat is { } current ? session.Seats.FirstOrDefault(s => s.Order == current)?.Id : null,
-            progress.IsFinished ? SessionResults.Map(session.Seats, progress) : []);
+            progress.IsFinished ? SessionResults.Map(session.Seats, progress) : [],
+            TurnStartedAt: now); // every own action restarts the turn time limit (Kniffel: several actions per turn)
 
         if (!await repository.SaveActionAsync(write, cancellationToken).ConfigureAwait(false))
         {

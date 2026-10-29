@@ -62,6 +62,7 @@ public sealed class GameSessionRepository(GameDbContext database) : IGameSession
             CreatedAt = write.CreatedAt,
             UpdatedAt = write.CreatedAt,
             LastActivityAt = write.CreatedAt,
+            TurnStartedAt = write.Status == SessionStatus.Running ? write.CreatedAt : null,
         });
 
         foreach (var seat in write.Seats)
@@ -231,6 +232,7 @@ public sealed class GameSessionRepository(GameDbContext database) : IGameSession
         session.InviteCode = null;
         session.UpdatedAt = write.UpdatedAt;
         session.LastActivityAt = write.UpdatedAt;
+        session.TurnStartedAt = write.UpdatedAt;
 
         try
         {
@@ -263,6 +265,14 @@ public sealed class GameSessionRepository(GameDbContext database) : IGameSession
         session.CurrentSeatId = write.CurrentSeatId;
         session.UpdatedAt = action.CreatedAt;
         session.LastActivityAt = action.CreatedAt;
+        if (write.NewStatus != SessionStatus.Running)
+        {
+            session.TurnStartedAt = null;
+        }
+        else if (write.TurnStartedAt is { } turnStartedAt)
+        {
+            session.TurnStartedAt = turnStartedAt;
+        }
 
         database.GameActions.Add(new GameAction
         {
@@ -363,6 +373,22 @@ public sealed class GameSessionRepository(GameDbContext database) : IGameSession
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
 
+    public async Task<IReadOnlyList<PlayerSeatRef>> GetTurnTimeoutsAsync(DateTimeOffset cutoff, CancellationToken cancellationToken) =>
+        await database.GameSessions.AsNoTracking()
+            .Where(session => session.Mode == GameMode.Multiplayer
+                && session.Status == SessionStatus.Running
+                && session.TurnStartedAt != null
+                && session.TurnStartedAt <= cutoff)
+            .Join(
+                database.Seats.AsNoTracking().Where(seat => seat.Kind == SeatKind.Human
+                    && seat.UserId != null
+                    && seat.ConnectionStatus == SeatConnectionStatus.Connected),
+                session => session.CurrentSeatId,
+                seat => (Guid?)seat.Id,
+                (session, seat) => new PlayerSeatRef(session.Id, seat.Id, seat.UserId!.Value))
+            .ToListAsync(cancellationToken)
+            .ConfigureAwait(false);
+
     public async Task<bool> SetStatusAsync(
         Guid sessionId,
         int expectedVersion,
@@ -375,6 +401,7 @@ public sealed class GameSessionRepository(GameDbContext database) : IGameSession
                 setters => setters
                     .SetProperty(session => session.Status, status)
                     .SetProperty(session => session.CurrentSeatId, (Guid?)null)
+                    .SetProperty(session => session.TurnStartedAt, (DateTimeOffset?)null)
                     .SetProperty(session => session.StateVersion, expectedVersion + 1)
                     .SetProperty(session => session.UpdatedAt, at),
                 cancellationToken)
@@ -421,6 +448,9 @@ public sealed class GameSessionRepository(GameDbContext database) : IGameSession
                     s.UserId,
                     s.ConnectionStatus,
                     s.AiDifficulty,
-                    s.AiStrategyVersion))]);
+                    s.AiStrategyVersion))])
+        {
+            TurnStartedAt = session.TurnStartedAt,
+        };
     }
 }

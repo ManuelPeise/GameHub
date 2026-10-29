@@ -4,7 +4,7 @@ using Shared.Models.Interfaces;
 namespace Services.Api.Hubs;
 
 /// <summary>
-/// Removes players whose reconnect deadline has passed. Deadlines come from the stored disconnect time,
+/// Removes players whose reconnect deadline or turn time limit has passed. Deadlines come from the stored disconnect time,
 /// so they survive a restart; after a start, seats of users without connection get a new deadline.
 /// </summary>
 internal sealed class ConnectionWatchdog(
@@ -29,6 +29,10 @@ internal sealed class ConnectionWatchdog(
                 await RunAsync(
                     (connections, ct) => connections.RemoveExpiredAsync(ct),
                     "Removing players after the reconnect deadline failed.",
+                    stoppingToken);
+                await RunAsync(
+                    (connections, ct) => connections.RemoveTurnTimeoutsAsync(ct),
+                    "Removing players after the turn time limit failed.",
                     stoppingToken);
             }
         }

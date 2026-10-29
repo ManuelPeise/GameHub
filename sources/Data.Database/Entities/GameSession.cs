@@ -42,5 +42,11 @@ public sealed class GameSession
     /// <summary>Last action of a player; paused singleplayer sessions are aborted after 30 days of inactivity.</summary>
     public DateTimeOffset LastActivityAt { get; set; }
 
+    /// <summary>
+    /// Start of the current turn for the multiplayer turn time limit: set when the turn passes to another seat
+    /// and by every own action (Kniffel); system events like Disconnected do not change it. Empty outside of a running game.
+    /// </summary>
+    public DateTimeOffset? TurnStartedAt { get; set; }
+
     public List<Seat> Seats { get; set; } = [];
 }

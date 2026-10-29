@@ -37,7 +37,7 @@ public sealed class PlayerConnectionLogicTests
             _time,
             NullLogger<PlayerConnectionLogic>.Instance);
 
-        _repository.Add(Session(_sessionId, GameMode.Multiplayer, _userA, _seatA, _userB, _seatB));
+        _repository.Add(Session(_sessionId, GameMode.Multiplayer, _userA, _seatA, _userB, _seatB) with { TurnStartedAt = _time.GetUtcNow() });
     }
 
     private SessionSnapshot Session(Guid id, GameMode mode, Guid userA, Guid seatA, Guid? userB, Guid seatB, SessionStatus status = SessionStatus.Running) =>
@@ -192,6 +192,75 @@ public sealed class PlayerConnectionLogicTests
         var lobby = _repository.Get(lobbyId);
         Xunit.Assert.Equal(SessionStatus.Lobby, lobby.Status);
         Xunit.Assert.Single(lobby.Seats);
+    }
+
+    [Xunit.Fact]
+    public async Task TurnTimeout_BeforeTwoMinutes_DoesNothing()
+    {
+        _time.Advance(TimeSpan.FromSeconds(119));
+
+        await _logic.RemoveTurnTimeoutsAsync(CancellationToken.None);
+
+        Xunit.Assert.Empty(_repository.Actions);
+    }
+
+    [Xunit.Fact]
+    public async Task TurnTimeout_LogsTimeoutAndRemoval_OtherPlayerWins()
+    {
+        _time.Advance(TimeSpan.FromMinutes(2));
+
+        await _logic.RemoveTurnTimeoutsAsync(CancellationToken.None);
+
+        Xunit.Assert.Equal(
+            new[] { SystemActionTypes.TurnTimeout, SystemActionTypes.PlayerRemoved },
+            _repository.Actions.Select(action => action.ActionType));
+        Xunit.Assert.All(_repository.Actions, action => Xunit.Assert.Equal(_seatA, action.SeatId));
+        Xunit.Assert.Equal(SessionStatus.Finished, _repository.Get(_sessionId).Status);
+        Xunit.Assert.Contains(new SeatResultWrite(_seatB, GameOutcome.Win, 1, null), _repository.Results);
+        Xunit.Assert.Contains(new SeatResultWrite(_seatA, GameOutcome.Removed, null, null), _repository.Results);
+    }
+
+    [Xunit.Fact]
+    public async Task OwnMove_RestartsTheTimer_ForTheNextSeat()
+    {
+        var handler = new SubmitActionHandler(_repository, _modules, _publisher, _time);
+        _time.Advance(TimeSpan.FromSeconds(90));
+        await handler.HandleAsync(new SubmitActionCommand(_sessionId, _seatA, null, "PlaceMark", "{\"cell\":4}"), CancellationToken.None);
+
+        _time.Advance(TimeSpan.FromSeconds(60)); // 2:30 since start, 1:00 since B's turn began
+        await _logic.RemoveTurnTimeoutsAsync(CancellationToken.None);
+        Xunit.Assert.Equal(SessionStatus.Running, _repository.Get(_sessionId).Status);
+
+        _time.Advance(TimeSpan.FromSeconds(60));
+        await _logic.RemoveTurnTimeoutsAsync(CancellationToken.None);
+        Xunit.Assert.Equal(SeatConnectionStatus.Removed, SeatB.ConnectionStatus);
+    }
+
+    [Xunit.Fact]
+    public async Task Singleplayer_HasNoTurnTimeout()
+    {
+        var singleId = Guid.NewGuid();
+        var humanSeat = Guid.NewGuid();
+        _repository.Add(Session(singleId, GameMode.Singleplayer, Guid.NewGuid(), humanSeat, null, Guid.NewGuid()) with { TurnStartedAt = _time.GetUtcNow() });
+        _time.Advance(TimeSpan.FromHours(1));
+
+        await _logic.RemoveTurnTimeoutsAsync(CancellationToken.None);
+
+        Xunit.Assert.Equal(SessionStatus.Running, _repository.Get(singleId).Status);
+        Xunit.Assert.DoesNotContain(_repository.Actions, action => action.SessionId == singleId);
+    }
+
+    [Xunit.Fact]
+    public async Task DisconnectedPlayerAtTurn_IsHandledByTheReconnectDeadline_NotTheTurnLimit()
+    {
+        _time.Advance(TimeSpan.FromSeconds(100));
+        await _logic.UserDisconnectedAsync(_userA, CancellationToken.None);
+        _time.Advance(TimeSpan.FromSeconds(30)); // turn over time, reconnect deadline not yet
+
+        await _logic.RemoveTurnTimeoutsAsync(CancellationToken.None);
+
+        Xunit.Assert.Equal(SessionStatus.Running, _repository.Get(_sessionId).Status);
+        Xunit.Assert.DoesNotContain(_repository.Actions, action => action.ActionType == SystemActionTypes.TurnTimeout);
     }
 
     private sealed class ManualTimeProvider(DateTimeOffset start) : TimeProvider
