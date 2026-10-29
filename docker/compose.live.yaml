@@ -1,0 +1,73 @@
+# Live stack: app, database and migration; e-mail via the SMTP provider from live.env.
+#   docker compose --env-file docker/live.env -f docker/compose.live.yaml up -d
+name: gamehub-live
+
+x-image: &image ${GAMEHUB_IMAGE:-ghcr.io/manuelpeise/gamehub-app}:${GAMEHUB_TAG:-latest}
+
+x-build: &build
+  context: ..
+  dockerfile: docker/Dockerfile
+
+x-app-environment: &app-environment
+  App__Environment__Name: Live
+  App__Environment__PublicBaseUrl: ${PUBLIC_BASE_URL:?PUBLIC_BASE_URL fehlt in docker/live.env}
+  ConnectionStrings__gamehub: Host=gamehub-db;Port=5432;Database=gamehub;Username=gamehub;Password=${POSTGRES_PASSWORD:?POSTGRES_PASSWORD fehlt in docker/live.env}
+  App__Email__Host: ${SMTP_HOST:?SMTP_HOST fehlt in docker/live.env}
+  App__Email__Port: ${SMTP_PORT:-587}
+  App__Email__UseTls: ${SMTP_USE_TLS:-true}
+  App__Email__UserName: ${SMTP_USER:-}
+  App__Email__Password: ${SMTP_PASSWORD:-}
+  App__Email__SenderAddress: ${SMTP_SENDER:?SMTP_SENDER fehlt in docker/live.env}
+
+services:
+  gamehub-db:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: gamehub
+      POSTGRES_USER: gamehub
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD fehlt in docker/live.env}
+    volumes:
+      - gamehub-db-data:/var/lib/postgresql/data
+    networks: [backend]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U gamehub -d gamehub"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    restart: unless-stopped
+
+  gamehub-migrate:
+    image: *image
+    build: *build
+    entrypoint: ["dotnet", "dbtools/Services.DbTools.dll", "migrate"]
+    environment: *app-environment
+    depends_on:
+      gamehub-db:
+        condition: service_healthy
+    networks: [backend]
+    restart: "no"
+
+  gamehub-app:
+    image: *image
+    build: *build
+    environment: *app-environment
+    depends_on:
+      gamehub-migrate:
+        condition: service_completed_successfully
+    ports:
+      - "${APP_PORT:-8080}:8080"
+    volumes:
+      - gamehub-keys:/keys
+      - gamehub-backups:/backups
+    networks: [backend, frontend]
+    restart: unless-stopped
+
+networks:
+  backend:
+    internal: true
+  frontend: {}
+
+volumes:
+  gamehub-db-data:
+  gamehub-keys:
+  gamehub-backups:

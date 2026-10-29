@@ -1,0 +1,79 @@
+# Testing stack: app, database, migration and Mailpit.
+#   docker compose --env-file docker/testing.env -f docker/compose.testing.yaml up -d
+name: gamehub-testing
+
+x-image: &image ${GAMEHUB_IMAGE:-ghcr.io/manuelpeise/gamehub-app}:${GAMEHUB_TAG:-latest}
+
+x-build: &build
+  context: ..
+  dockerfile: docker/Dockerfile
+
+x-app-environment: &app-environment
+  App__Environment__Name: Testing
+  App__Environment__PublicBaseUrl: ${PUBLIC_BASE_URL:-http://localhost:8081}
+  ConnectionStrings__gamehub: Host=gamehub-db;Port=5432;Database=gamehub;Username=gamehub;Password=${POSTGRES_PASSWORD:?POSTGRES_PASSWORD fehlt in docker/testing.env}
+  ConnectionStrings__mailpit: Endpoint=smtp://gamehub-mail:1025
+
+services:
+  gamehub-db:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: gamehub
+      POSTGRES_USER: gamehub
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD fehlt in docker/testing.env}
+    volumes:
+      - gamehub-db-data:/var/lib/postgresql/data
+    networks: [backend]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U gamehub -d gamehub"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    restart: unless-stopped
+
+  # Applies pending migrations and exits; the app only starts if this succeeded.
+  gamehub-migrate:
+    image: *image
+    build: *build
+    entrypoint: ["dotnet", "dbtools/Services.DbTools.dll", "migrate"]
+    environment: *app-environment
+    depends_on:
+      gamehub-db:
+        condition: service_healthy
+    networks: [backend]
+    restart: "no"
+
+  gamehub-app:
+    image: *image
+    build: *build
+    environment: *app-environment
+    depends_on:
+      gamehub-migrate:
+        condition: service_completed_successfully
+      gamehub-mail:
+        condition: service_started
+    ports:
+      - "${APP_PORT:-8081}:8080"
+    volumes:
+      - gamehub-keys:/keys
+      - gamehub-backups:/backups
+    networks: [backend, frontend]
+    restart: unless-stopped
+
+  gamehub-mail:
+    image: axllent/mailpit:latest
+    ports:
+      - "${MAIL_UI_PORT:-8026}:8025"
+    networks: [backend, frontend]
+    restart: unless-stopped
+
+networks:
+  # Internal: the database is not reachable from outside the stack.
+  backend:
+    internal: true
+  frontend: {}
+
+volumes:
+  gamehub-db-data:
+  gamehub-keys:
+  gamehub-backups:

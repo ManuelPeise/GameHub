@@ -118,6 +118,8 @@ builder.Services.AddRateLimiter(options =>
 
 var app = builder.Build();
 
+app.UseDefaultFiles();
+app.UseStaticFiles();
 app.UseRateLimiter();
 app.UseAuthentication();
 app.UseAuthorization();
@@ -134,7 +136,15 @@ app.MapGet("/api/info", (IAppSettings settings) => Results.Ok(new
 {
     name = "GameHub API",
     environment = settings.Environment.Name,
+    showBanner = settings.Environment.ShowBanner && !settings.Environment.IsLive,
 }));
+
+// Docker image: the built frontend lies in wwwroot and is served by the API (one container, one origin).
+// In development Vite serves the frontend and wwwroot does not exist.
+if (app.Environment.WebRootPath is { } webRoot && File.Exists(Path.Combine(webRoot, "index.html")))
+{
+    app.MapFallbackToFile("index.html");
+}
 
 app.Run();
 

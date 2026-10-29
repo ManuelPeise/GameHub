@@ -92,6 +92,12 @@ public sealed class SecuritySettings
 {
     public bool RequireAdminTwoFactor { get; set; } = true;
 
+    /// <summary>
+    /// Folder for the data protection keys (auth cookies, e-mail tokens). In Docker a volume, so that sign-ins
+    /// and links survive a container update; empty = keys only in memory (development).
+    /// </summary>
+    public string? DataProtectionKeysPath { get; set; }
+
     /// <summary>Registrations per client IP and hour.</summary>
     public int RegistrationRateLimit { get; set; } = 5;
 

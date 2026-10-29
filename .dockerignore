@@ -1,0 +1,14 @@
+# Keep the build context small and free of local artifacts and secrets.
+.git
+.github
+.vs
+.vscode
+user-stories
+**/bin
+**/obj
+**/node_modules
+**/dist
+**/*.env
+**/.env
+**/.env.*
+!**/*.env.example

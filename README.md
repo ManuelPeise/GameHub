@@ -92,6 +92,42 @@ cd sources
 $env:GAMEHUB_UPDATE_CONTRACTS = "1"; dotnet test Tests.Shared; Remove-Item Env:GAMEHUB_UPDATE_CONTRACTS
 ```
 
+## Docker: Testing und Live
+
+Testing und Live laufen als getrennte Docker-Compose-Stacks (eigene Projektnamen `gamehub-testing` und
+`gamehub-live`, eigene Netze, Volumes und Umgebungsdateien). Jeder Stack besteht aus:
+
+| Dienst | Aufgabe |
+| --- | --- |
+| `gamehub-db` | PostgreSQL 17, nur im internen Netz erreichbar, Daten im Volume `gamehub-db-data` |
+| `gamehub-migrate` | führt ausstehende Migrationen aus und beendet sich; die App startet nur, wenn das gelingt |
+| `gamehub-app` | API mit eingebautem Frontend; Schlüssel (Anmeldungen) im Volume `gamehub-keys`, Backups in `gamehub-backups` |
+| `gamehub-mail` | nur Testing: Mailpit, alle E-Mails landen im Web-UI (Standard: http://localhost:8026) |
+
+Erstmalig einrichten (Beispiel Testing):
+
+```
+copy docker\testing.env.example docker\testing.env      # Werte anpassen, Datei bleibt lokal
+docker login ghcr.io                                     # nur nötig, wenn das Paket privat ist (Token mit read:packages)
+docker compose --env-file docker/testing.env -f docker/compose.testing.yaml up -d
+```
+
+Die App läuft dann unter http://localhost:8081 und zeigt das Banner „Testumgebung“. Ersten Administrator anlegen:
+
+```
+docker compose --env-file docker/testing.env -f docker/compose.testing.yaml run --rm --entrypoint dotnet gamehub-app dbtools/Services.DbTools.dll create-admin admin@example.org "Admin"
+```
+
+**Update** (neues Image nach einem Merge in `Master`, siehe CI): nur Migration und App werden ersetzt, die Datenbank läuft weiter.
+
+```
+docker compose --env-file docker/testing.env -f docker/compose.testing.yaml pull gamehub-migrate gamehub-app
+docker compose --env-file docker/testing.env -f docker/compose.testing.yaml up -d
+```
+
+Ohne Registry lokal bauen: `docker compose --env-file docker/testing.env -f docker/compose.testing.yaml build`.
+Live funktioniert gleich mit `docker/live.env` und `docker/compose.live.yaml` (SMTP-Anbieter in `live.env`).
+
 ## CI (GitHub Actions)
 
 `.github/workflows/ci.yml` läuft bei jedem Push und Pull Request mit drei Jobs:
@@ -101,6 +137,7 @@ $env:GAMEHUB_UPDATE_CONTRACTS = "1"; dotnet test Tests.Shared; Remove-Item Env:G
 | Zeilenenden | keine CRLF-Dateien im Repository (außer `*.cmd`, `*.bat`, `*.sln`) |
 | .NET Build und Tests | Build aller .NET-Projekte (Release), alle `Tests.*` inkl. Architektur- und Vertragstests; Ergebnisse als Artefakt `test-results` |
 | Frontend Lint, Typprüfung und Build | `npm ci`, `npm run lint`, `npm run build` (inkl. `tsc -b`) |
+| Docker-Image | nur nach Push auf `Master` und grünen Checks: baut `ghcr.io/manuelpeise/gamehub-app` mit den Tags `latest` und `sha-<commit>` |
 
 Damit ein Pull Request bei Fehlern nicht gemergt werden kann, einmalig in GitHub einrichten:
 Settings → Branches → Branch protection rule für `Master` → „Require status checks to pass before merging“ →

@@ -30,8 +30,13 @@ public static class UserAccountsRegistration
 
         builder.Services.TryAddSingleton(TimeProvider.System);
 
-        // Protects auth cookies and the tokens in e-mail links. Keys must be persisted in Docker (US-029).
-        builder.Services.AddDataProtection().SetApplicationName("GameHub");
+        // Protects auth cookies and the tokens in e-mail links. In Docker the keys live in a volume (US-029),
+        // otherwise every container update would sign out all users and invalidate open e-mail links.
+        var dataProtection = builder.Services.AddDataProtection().SetApplicationName("GameHub");
+        if (!string.IsNullOrWhiteSpace(security.DataProtectionKeysPath))
+        {
+            dataProtection.PersistKeysToFileSystem(new DirectoryInfo(security.DataProtectionKeysPath));
+        }
 
         builder.Services
             .AddAuthentication(IdentityConstants.ApplicationScheme)
