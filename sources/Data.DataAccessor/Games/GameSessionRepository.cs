@@ -137,6 +137,81 @@ public sealed class GameSessionRepository(GameDbContext database) : IGameSession
         }
     }
 
+    public async Task<bool> RemoveSeatAsync(SeatRemoveWrite write, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(write);
+
+        // Seats are moved up one by one in ascending order inside one transaction, so the unique index
+        // (SessionId, Order) is never violated. The execution strategy retries the whole unit.
+        var strategy = database.Database.CreateExecutionStrategy();
+        try
+        {
+            return await strategy.ExecuteAsync(async ct =>
+            {
+                database.ChangeTracker.Clear();
+                await using var transaction = await database.Database.BeginTransactionAsync(ct).ConfigureAwait(false);
+
+                var bumped = await database.GameSessions
+                    .Where(s => s.Id == write.SessionId && s.StateVersion == write.ExpectedVersion && s.Status == SessionStatus.Lobby)
+                    .ExecuteUpdateAsync(
+                        setters => setters
+                            .SetProperty(s => s.StateVersion, write.ExpectedVersion + 1)
+                            .SetProperty(s => s.UpdatedAt, write.UpdatedAt)
+                            .SetProperty(s => s.LastActivityAt, write.UpdatedAt),
+                        ct)
+                    .ConfigureAwait(false);
+                if (bumped == 0)
+                {
+                    return false;
+                }
+
+                var deleted = await database.Seats
+                    .Where(seat => seat.Id == write.SeatId && seat.SessionId == write.SessionId)
+                    .ExecuteDeleteAsync(ct)
+                    .ConfigureAwait(false);
+                if (deleted == 0)
+                {
+                    return false;
+                }
+
+                foreach (var reorder in write.Reorders.OrderBy(r => r.Order))
+                {
+                    await database.Seats
+                        .Where(seat => seat.Id == reorder.SeatId && seat.SessionId == write.SessionId)
+                        .ExecuteUpdateAsync(
+                            setters => setters
+                                .SetProperty(seat => seat.Order, reorder.Order)
+                                .SetProperty(seat => seat.Symbol, reorder.Symbol),
+                            ct)
+                        .ConfigureAwait(false);
+                }
+
+                await transaction.CommitAsync(ct).ConfigureAwait(false);
+                return true;
+            }, cancellationToken).ConfigureAwait(false);
+        }
+        catch (DbUpdateException)
+        {
+            return false;
+        }
+    }
+
+    public async Task<IReadOnlyList<OpenLobbySummary>> GetOpenLobbiesAsync(string? gameType, int limit, CancellationToken cancellationToken) =>
+        await database.GameSessions.AsNoTracking()
+            .Where(s => s.Mode == GameMode.Multiplayer && s.Status == SessionStatus.Lobby)
+            .Where(s => gameType == null || s.GameType == gameType)
+            .OrderByDescending(s => s.CreatedAt)
+            .Take(limit)
+            .Select(s => new OpenLobbySummary(
+                s.Id,
+                s.GameType,
+                s.OwnerUserId,
+                s.Seats.Where(seat => seat.UserId == s.OwnerUserId).Select(seat => seat.DisplayName).FirstOrDefault() ?? string.Empty,
+                s.Seats.Count,
+                s.CreatedAt))
+            .ToListAsync(cancellationToken)
+            .ConfigureAwait(false);
+
     public async Task<bool> StartSessionAsync(SessionStartWrite write, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(write);

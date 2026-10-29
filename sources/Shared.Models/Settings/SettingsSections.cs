@@ -14,6 +14,9 @@ public sealed class GameSettings
 
     /// <summary>Inactivity after which a paused singleplayer session is aborted.</summary>
     public TimeSpan PausedSessionRetention { get; set; } = TimeSpan.FromDays(30);
+
+    /// <summary>Whether the owner of a multiplayer lobby may add AI seats.</summary>
+    public bool AllowAiInMultiplayer { get; set; } = true;
 }
 
 /// <summary>AI behaviour (section App:Ai).</summary>

@@ -11,11 +11,16 @@ import AdminPage from "./admin/AdminPage";
 import HomePage from "./HomePage";
 import LobbyPage from "./LobbyPage";
 import NewSessionPage from "./NewSessionPage";
+import OpenLobbiesPage from "./OpenLobbiesPage";
 
 /** Minimal path-based page selection until routing and layout arrive. */
 const App: React.FC = () => {
   if (window.location.pathname === sessionPagePaths.newSession) {
     return <NewSessionPage />;
+  }
+
+  if (window.location.pathname === sessionPagePaths.openLobbies) {
+    return <OpenLobbiesPage />;
   }
 
   if (window.location.pathname.startsWith(sessionPagePaths.lobbyPrefix)) {

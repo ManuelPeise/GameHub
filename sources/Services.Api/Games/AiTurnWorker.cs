@@ -29,13 +29,21 @@ internal sealed class AiTurnWorker(
 
     private async Task ResumeRunningSessionsAsync(CancellationToken cancellationToken)
     {
-        await using var scope = scopeFactory.CreateAsyncScope();
-        var repository = scope.ServiceProvider.GetRequiredService<IGameSessionRepository>();
-        var sessions = await repository.GetRunningSessionsWithAiTurnAsync(cancellationToken).ConfigureAwait(false);
-
-        foreach (var sessionId in sessions)
+        try
         {
-            await scheduler.EnqueueAsync(sessionId, cancellationToken).ConfigureAwait(false);
+            await using var scope = scopeFactory.CreateAsyncScope();
+            var repository = scope.ServiceProvider.GetRequiredService<IGameSessionRepository>();
+            var sessions = await repository.GetRunningSessionsWithAiTurnAsync(cancellationToken).ConfigureAwait(false);
+
+            foreach (var sessionId in sessions)
+            {
+                await scheduler.EnqueueAsync(sessionId, cancellationToken).ConfigureAwait(false);
+            }
+        }
+        catch (Exception exception) when (exception is not OperationCanceledException)
+        {
+            // Do not stop the API if the database is not reachable yet; open AI turns resume with the next move.
+            logger.LogError(exception, "Resuming AI turns after start failed.");
         }
     }
 

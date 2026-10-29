@@ -15,6 +15,12 @@ public interface IGameSessionRepository
 
     Task<bool> AddSeatAsync(SeatAddWrite write, CancellationToken cancellationToken);
 
+    /// <summary>Removes a lobby seat and moves the following seats up. False on version conflict.</summary>
+    Task<bool> RemoveSeatAsync(SeatRemoveWrite write, CancellationToken cancellationToken);
+
+    /// <summary>Multiplayer sessions in status Lobby, newest first.</summary>
+    Task<IReadOnlyList<OpenLobbySummary>> GetOpenLobbiesAsync(string? gameType, int limit, CancellationToken cancellationToken);
+
     Task<bool> StartSessionAsync(SessionStartWrite write, CancellationToken cancellationToken);
 
     /// <summary>

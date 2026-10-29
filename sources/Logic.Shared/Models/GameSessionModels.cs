@@ -111,3 +111,23 @@ public sealed record GameActionApplied(
 
 /// <summary>Event before an AI action delay starts.</summary>
 public sealed record AiThinking(Guid SessionId, Guid SeatId);
+
+/// <summary>New position (and symbol) of a remaining seat after a lobby seat was removed.</summary>
+public sealed record SeatReorder(Guid SeatId, int Order, string? Symbol);
+
+/// <summary>Optimistic-lock write for removing one seat from a lobby; later seats move up.</summary>
+public sealed record SeatRemoveWrite(
+    Guid SessionId,
+    int ExpectedVersion,
+    Guid SeatId,
+    IReadOnlyList<SeatReorder> Reorders,
+    DateTimeOffset UpdatedAt);
+
+/// <summary>Open multiplayer lobby for the public list.</summary>
+public sealed record OpenLobbySummary(
+    Guid Id,
+    string GameType,
+    Guid OwnerUserId,
+    string OwnerName,
+    int SeatCount,
+    DateTimeOffset CreatedAt);

@@ -1,6 +1,6 @@
 import type { ApiOptions } from "./types/api";
 
-export type HttpMethod = "GET" | "POST";
+export type HttpMethod = "GET" | "POST" | "DELETE";
 
 /** Thrown for every non-2xx response; carries the status code and the parsed response body. */
 export class ApiError extends Error {
@@ -22,6 +22,17 @@ export const getValidationErrors = (error: unknown): Record<string, string[]> =>
   }
   const body = error.body as { errors?: Record<string, string[]> } | null;
   return body?.errors ?? {};
+};
+
+/** The German error message of an API failure ({ error: "..." }), or the given fallback. */
+export const getErrorMessage = (error: unknown, fallback: string): string => {
+  if (error instanceof ApiError) {
+    const body = error.body as { error?: string } | null;
+    if (body && typeof body.error === "string") {
+      return body.error;
+    }
+  }
+  return fallback;
 };
 
 const buildUrl = <TModel, TBody>(options: ApiOptions<TModel, TBody>): string => {

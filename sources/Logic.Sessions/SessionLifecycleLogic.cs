@@ -6,6 +6,7 @@ using Logic.Sessions.Ai;
 using Logic.Shared.Interfaces;
 using Logic.Shared.Models;
 using Shared.Models.Games;
+using Shared.Models.Interfaces;
 
 namespace Logic.Sessions;
 
@@ -35,8 +36,11 @@ public sealed class SessionLifecycleLogic(
     GameModuleRegistry modules,
     IAiStrategyRegistry strategies,
     IAiTurnScheduler scheduler,
+    IAppSettings appSettings,
     TimeProvider timeProvider)
 {
+    private const int OpenLobbyListLimit = 50;
+
     private const int InviteCodeLength = 6;
     private const string InviteAlphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
 
@@ -249,6 +253,182 @@ public sealed class SessionLifecycleLogic(
                 "Bitte gib einen gültigen Einladungscode ein.");
         }
 
+        var code = request.InviteCode.Trim().ToUpperInvariant();
+        return await JoinCoreAsync(
+                userId,
+                ct => repository.FindByInviteCodeAsync(code, ct),
+                "Der Einladungscode ist ungültig.",
+                cancellationToken)
+            .ConfigureAwait(false);
+    }
+
+    /// <summary>Join from the public list of open lobbies.</summary>
+    public Task<SessionLifecycleOutcome> JoinByIdAsync(Guid userId, Guid sessionId, CancellationToken cancellationToken) =>
+        JoinCoreAsync(
+            userId,
+            ct => repository.GetAsync(sessionId, ct),
+            "Die Partie wurde nicht gefunden.",
+            cancellationToken);
+
+    /// <summary>Open multiplayer lobbies that still have a free seat (public list).</summary>
+    public async Task<IReadOnlyList<OpenLobbyDto>> ListOpenLobbiesAsync(Guid userId, string? gameType, CancellationToken cancellationToken)
+    {
+        var lobbies = await repository.GetOpenLobbiesAsync(gameType, OpenLobbyListLimit, cancellationToken).ConfigureAwait(false);
+        return
+        [
+            .. lobbies
+                .Where(lobby => modules.TryGet(lobby.GameType, out _))
+                .Select(lobby => (Lobby: lobby, MaxSeats: modules.Get(lobby.GameType).MaxSeats))
+                .Where(entry => entry.Lobby.SeatCount < entry.MaxSeats)
+                .Select(entry => new OpenLobbyDto(
+                    entry.Lobby.Id,
+                    entry.Lobby.GameType,
+                    entry.Lobby.OwnerName,
+                    entry.Lobby.SeatCount,
+                    entry.MaxSeats,
+                    entry.Lobby.OwnerUserId == userId,
+                    entry.Lobby.CreatedAt)),
+        ];
+    }
+
+    /// <summary>The owner adds an AI seat to the lobby (if allowed by App:Game:AllowAiInMultiplayer).</summary>
+    public async Task<SessionLifecycleOutcome> AddAiSeatAsync(Guid userId, Guid sessionId, AddAiSeatRequest request, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+
+        if (!appSettings.Game.AllowAiInMultiplayer)
+        {
+            return new SessionLifecycleOutcome.Failure(
+                SessionLifecycleFailureKind.InvalidRequest,
+                "KI-Mitspieler sind im Multiplayer nicht erlaubt.");
+        }
+
+        for (var attempt = 0; attempt < 3; attempt++)
+        {
+            var (session, ownerSeat, failure) = await LoadOwnLobbyAsync(userId, sessionId, cancellationToken).ConfigureAwait(false);
+            if (failure is not null)
+            {
+                return failure;
+            }
+
+            IAiPlayer strategy;
+            try
+            {
+                strategy = strategies.Get(session!.GameType, request.Difficulty);
+            }
+            catch (InvalidOperationException)
+            {
+                return new SessionLifecycleOutcome.Failure(
+                    SessionLifecycleFailureKind.InvalidRequest,
+                    "Diesen Schwierigkeitsgrad gibt es für dieses Spiel nicht.");
+            }
+
+            if (session.Seats.Count >= modules.Get(session.GameType).MaxSeats)
+            {
+                return new SessionLifecycleOutcome.Failure(SessionLifecycleFailureKind.Conflict, "Die Lobby ist bereits voll.");
+            }
+
+            var order = session.Seats.Count;
+            var seat = new SeatCreateWrite(
+                Guid.NewGuid(),
+                order,
+                SeatKind.Ai,
+                $"KI ({strategy.Difficulty})",
+                Symbol(order),
+                null,
+                strategy.Difficulty,
+                strategy.Version,
+                SeatConnectionStatus.Connected,
+                null);
+
+            if (await repository.AddSeatAsync(new SeatAddWrite(session.Id, session.StateVersion, seat, timeProvider.GetUtcNow()), cancellationToken)
+                .ConfigureAwait(false))
+            {
+                var updated = await repository.GetAsync(session.Id, cancellationToken).ConfigureAwait(false);
+                return updated is null
+                    ? new SessionLifecycleOutcome.Failure(SessionLifecycleFailureKind.NotFound, "Die Partie wurde nicht gefunden.")
+                    : new SessionLifecycleOutcome.Success(updated, ownerSeat!.Id);
+            }
+        }
+
+        return new SessionLifecycleOutcome.Failure(
+            SessionLifecycleFailureKind.Conflict,
+            "Die Lobby wurde parallel geändert. Bitte versuche es erneut.");
+    }
+
+    /// <summary>The owner removes an AI seat from the lobby; the following seats move up.</summary>
+    public async Task<SessionLifecycleOutcome> RemoveAiSeatAsync(Guid userId, Guid sessionId, Guid seatId, CancellationToken cancellationToken)
+    {
+        for (var attempt = 0; attempt < 3; attempt++)
+        {
+            var (session, ownerSeat, failure) = await LoadOwnLobbyAsync(userId, sessionId, cancellationToken).ConfigureAwait(false);
+            if (failure is not null)
+            {
+                return failure;
+            }
+
+            var seat = session!.Seats.FirstOrDefault(candidate => candidate.Id == seatId);
+            if (seat is null || seat.Kind != SeatKind.Ai)
+            {
+                return new SessionLifecycleOutcome.Failure(
+                    SessionLifecycleFailureKind.InvalidRequest,
+                    "Nur KI-Mitspieler können entfernt werden.");
+            }
+
+            var reorders = session.Seats
+                .Where(candidate => candidate.Order > seat.Order)
+                .OrderBy(candidate => candidate.Order)
+                .Select(candidate => new SeatReorder(candidate.Id, candidate.Order - 1, Symbol(candidate.Order - 1)))
+                .ToList();
+
+            if (await repository.RemoveSeatAsync(
+                    new SeatRemoveWrite(session.Id, session.StateVersion, seat.Id, reorders, timeProvider.GetUtcNow()),
+                    cancellationToken)
+                .ConfigureAwait(false))
+            {
+                var updated = await repository.GetAsync(session.Id, cancellationToken).ConfigureAwait(false);
+                return updated is null
+                    ? new SessionLifecycleOutcome.Failure(SessionLifecycleFailureKind.NotFound, "Die Partie wurde nicht gefunden.")
+                    : new SessionLifecycleOutcome.Success(updated, ownerSeat!.Id);
+            }
+        }
+
+        return new SessionLifecycleOutcome.Failure(
+            SessionLifecycleFailureKind.Conflict,
+            "Die Lobby wurde parallel geändert. Bitte versuche es erneut.");
+    }
+
+    private async Task<(SessionSnapshot? Session, SeatSnapshot? OwnerSeat, SessionLifecycleOutcome.Failure? Failure)> LoadOwnLobbyAsync(
+        Guid userId,
+        Guid sessionId,
+        CancellationToken cancellationToken)
+    {
+        var session = await repository.GetAsync(sessionId, cancellationToken).ConfigureAwait(false);
+        if (session is null)
+        {
+            return (null, null, new(SessionLifecycleFailureKind.NotFound, "Die Partie wurde nicht gefunden."));
+        }
+
+        if (session.OwnerUserId != userId)
+        {
+            return (null, null, new(SessionLifecycleFailureKind.Forbidden, "Nur der Ersteller kann die Lobby ändern."));
+        }
+
+        if (session.Status != SessionStatus.Lobby)
+        {
+            return (null, null, new(SessionLifecycleFailureKind.InvalidState, "Die Partie befindet sich nicht mehr in der Lobby."));
+        }
+
+        var ownerSeat = session.Seats.First(seat => seat.UserId == userId);
+        return (session, ownerSeat, null);
+    }
+
+    private async Task<SessionLifecycleOutcome> JoinCoreAsync(
+        Guid userId,
+        Func<CancellationToken, Task<SessionSnapshot?>> loadSession,
+        string notFoundError,
+        CancellationToken cancellationToken)
+    {
         var account = await accounts.FindAsync(userId, cancellationToken).ConfigureAwait(false);
         if (account is null)
         {
@@ -257,12 +437,10 @@ public sealed class SessionLifecycleLogic(
 
         for (var attempt = 0; attempt < 3; attempt++)
         {
-            var session = await repository.FindByInviteCodeAsync(request.InviteCode, cancellationToken).ConfigureAwait(false);
-            if (session is null)
+            var session = await loadSession(cancellationToken).ConfigureAwait(false);
+            if (session is null || session.Mode != GameMode.Multiplayer)
             {
-                return new SessionLifecycleOutcome.Failure(
-                    SessionLifecycleFailureKind.NotFound,
-                    "Der Einladungscode ist ungültig.");
+                return new SessionLifecycleOutcome.Failure(SessionLifecycleFailureKind.NotFound, notFoundError);
             }
 
             if (session.Status != SessionStatus.Lobby)

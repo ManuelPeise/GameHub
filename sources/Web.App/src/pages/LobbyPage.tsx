@@ -1,8 +1,10 @@
 import React from "react";
-import { sendRequest } from "../hooks/apiClient";
+import { getErrorMessage, sendRequest } from "../hooks/apiClient";
 import {
+  difficultyOptions,
   sessionPagePaths,
   sessionUrls,
+  type AddAiSeatRequest,
   type JoinSessionRequest,
   type SessionDto,
 } from "../api/sessions";
@@ -19,6 +21,8 @@ const LobbyPage: React.FC<LobbyPageProps> = ({ sessionId, inviteCode }) => {
   const [session, setSession] = React.useState<SessionDto | null>(null);
   const [error, setError] = React.useState<string | null>(null);
   const [isStarting, setIsStarting] = React.useState(false);
+  const [isChangingSeats, setIsChangingSeats] = React.useState(false);
+  const [aiDifficulty, setAiDifficulty] = React.useState<string>(difficultyOptions[0].value);
 
   React.useEffect(() => {
     let cancelled = false;
@@ -75,10 +79,47 @@ const LobbyPage: React.FC<LobbyPageProps> = ({ sessionId, inviteCode }) => {
     try {
       const started = await sendRequest<SessionDto>("POST", { serviceUrl: sessionUrls.start(session.id) });
       setSession(started);
-    } catch {
-      setError("Die Partie konnte nicht gestartet werden.");
+    } catch (failure) {
+      setError(getErrorMessage(failure, "Die Partie konnte nicht gestartet werden."));
     } finally {
       setIsStarting(false);
+    }
+  };
+
+  const addAiSeat = async () => {
+    if (!session) {
+      return;
+    }
+
+    setIsChangingSeats(true);
+    setError(null);
+    try {
+      const updated = await sendRequest<SessionDto, AddAiSeatRequest>("POST", {
+        serviceUrl: sessionUrls.aiSeats(session.id),
+        body: { difficulty: aiDifficulty },
+      });
+      setSession(updated);
+    } catch (failure) {
+      setError(getErrorMessage(failure, "Der KI-Mitspieler konnte nicht hinzugefügt werden."));
+    } finally {
+      setIsChangingSeats(false);
+    }
+  };
+
+  const removeSeat = async (seatId: string) => {
+    if (!session) {
+      return;
+    }
+
+    setIsChangingSeats(true);
+    setError(null);
+    try {
+      const updated = await sendRequest<SessionDto>("DELETE", { serviceUrl: sessionUrls.seat(session.id, seatId) });
+      setSession(updated);
+    } catch (failure) {
+      setError(getErrorMessage(failure, "Der KI-Mitspieler konnte nicht entfernt werden."));
+    } finally {
+      setIsChangingSeats(false);
     }
   };
 
@@ -117,9 +158,34 @@ const LobbyPage: React.FC<LobbyPageProps> = ({ sessionId, inviteCode }) => {
             .map((seat) => (
               <li key={seat.id}>
                 {seat.displayName} ({seat.kind === "Ai" ? "KI" : "Mensch"})
+                {canStart && seat.kind === "Ai" && (
+                  <button
+                    type="button"
+                    onClick={() => void removeSeat(seat.id)}
+                    disabled={isChangingSeats}
+                    aria-label={`${seat.displayName} entfernen`}
+                  >
+                    Entfernen
+                  </button>
+                )}
               </li>
             ))}
         </ul>
+        {canStart && (
+          <div className="account-field">
+            <label htmlFor="ai-difficulty">KI-Mitspieler hinzufügen</label>
+            <select id="ai-difficulty" value={aiDifficulty} onChange={(event) => setAiDifficulty(event.target.value)}>
+              {difficultyOptions.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+            <button type="button" onClick={() => void addAiSeat()} disabled={isChangingSeats}>
+              KI hinzufügen
+            </button>
+          </div>
+        )}
       </section>
 
       {error && (

@@ -121,6 +121,47 @@ internal sealed class InMemoryGameSessionRepository : IGameSessionRepository
         return Task.FromResult(true);
     }
 
+    public Task<bool> RemoveSeatAsync(SeatRemoveWrite write, CancellationToken cancellationToken)
+    {
+        if (!_sessions.TryGetValue(write.SessionId, out var session)
+            || session.StateVersion != write.ExpectedVersion
+            || session.Status != SessionStatus.Lobby
+            || session.Seats.All(seat => seat.Id != write.SeatId))
+        {
+            return Task.FromResult(false);
+        }
+
+        var reorders = write.Reorders.ToDictionary(r => r.SeatId);
+        _sessions[write.SessionId] = session with
+        {
+            StateVersion = session.StateVersion + 1,
+            Seats =
+            [
+                .. session.Seats
+                    .Where(seat => seat.Id != write.SeatId)
+                    .Select(seat => reorders.TryGetValue(seat.Id, out var r) ? seat with { Order = r.Order, Symbol = r.Symbol } : seat)
+                    .OrderBy(seat => seat.Order),
+            ],
+        };
+        return Task.FromResult(true);
+    }
+
+    public Task<IReadOnlyList<OpenLobbySummary>> GetOpenLobbiesAsync(string? gameType, int limit, CancellationToken cancellationToken) =>
+        Task.FromResult<IReadOnlyList<OpenLobbySummary>>(
+        [
+            .. _sessions.Values
+                .Where(s => s.Mode == GameMode.Multiplayer && s.Status == SessionStatus.Lobby)
+                .Where(s => gameType is null || s.GameType == gameType)
+                .Take(limit)
+                .Select(s => new OpenLobbySummary(
+                    s.Id,
+                    s.GameType,
+                    s.OwnerUserId,
+                    s.Seats.FirstOrDefault(seat => seat.UserId == s.OwnerUserId)?.DisplayName ?? string.Empty,
+                    s.Seats.Count,
+                    DateTimeOffset.UnixEpoch)),
+        ]);
+
     public Task<bool> StartSessionAsync(SessionStartWrite write, CancellationToken cancellationToken)
     {
         if (!_sessions.TryGetValue(write.SessionId, out var session)

@@ -255,7 +255,7 @@ public sealed class AiTurnRunnerTests
         Xunit.Assert.Equal(session.StateJson, replayedState);
     }
 
-    private sealed class RecordingGameEventPublisher : IGameEventPublisher
+    internal sealed class RecordingGameEventPublisher : IGameEventPublisher
     {
         public List<AiThinking> AiThinkingEvents { get; } = [];
 
@@ -268,7 +268,7 @@ public sealed class AiTurnRunnerTests
         }
     }
 
-    private sealed class TestAppSettings(TimeSpan aiDelay) : IAppSettings
+    internal sealed class TestAppSettings(TimeSpan aiDelay) : IAppSettings
     {
         public GameSettings Game { get; } = new();
 

@@ -13,7 +13,11 @@ public static class GameSessionEndpoints
 
         sessions.MapPost(string.Empty, CreateAsync);
         sessions.MapGet("/{id:guid}", GetAsync);
+        sessions.MapGet("/open", ListOpenLobbiesAsync);
         sessions.MapPost("/join", JoinAsync);
+        sessions.MapPost("/{id:guid}/join", JoinByIdAsync);
+        sessions.MapPost("/{id:guid}/ai-seats", AddAiSeatAsync);
+        sessions.MapDelete("/{id:guid}/seats/{seatId:guid}", RemoveAiSeatAsync);
         sessions.MapPost("/{id:guid}/start", StartAsync);
         sessions.MapPost("/{id:guid}/rematch", RematchAsync);
         sessions.MapPost("/{id:guid}/actions", SubmitActionAsync);
@@ -67,6 +71,68 @@ public static class GameSessionEndpoints
 
         var outcome = await logic.JoinAsync(userId.Value, request, cancellationToken);
         return ToSessionResult(outcome);
+    }
+
+    private static async Task<IResult> ListOpenLobbiesAsync(
+        string? gameType,
+        SessionLifecycleLogic logic,
+        ClaimsPrincipal principal,
+        CancellationToken cancellationToken)
+    {
+        var userId = GetUserId(principal);
+        if (userId is null)
+        {
+            return Results.Unauthorized();
+        }
+
+        return Results.Ok(await logic.ListOpenLobbiesAsync(userId.Value, gameType, cancellationToken));
+    }
+
+    private static async Task<IResult> JoinByIdAsync(
+        Guid id,
+        SessionLifecycleLogic logic,
+        ClaimsPrincipal principal,
+        CancellationToken cancellationToken)
+    {
+        var userId = GetUserId(principal);
+        if (userId is null)
+        {
+            return Results.Unauthorized();
+        }
+
+        return ToSessionResult(await logic.JoinByIdAsync(userId.Value, id, cancellationToken));
+    }
+
+    private static async Task<IResult> AddAiSeatAsync(
+        Guid id,
+        AddAiSeatRequest request,
+        SessionLifecycleLogic logic,
+        ClaimsPrincipal principal,
+        CancellationToken cancellationToken)
+    {
+        var userId = GetUserId(principal);
+        if (userId is null)
+        {
+            return Results.Unauthorized();
+        }
+
+        return ToSessionResult(await logic.AddAiSeatAsync(userId.Value, id, request, cancellationToken));
+    }
+
+    private static async Task<IResult> RemoveAiSeatAsync(
+        Guid id,
+        Guid seatId,
+        SessionLifecycleLogic logic,
+        ClaimsPrincipal principal,
+        CancellationToken cancellationToken)
+    {
+        var userId = GetUserId(principal);
+        if (userId is null)
+        {
+            return Results.Unauthorized();
+        }
+
+        return ToSessionResult(await logic.RemoveAiSeatAsync(userId.Value, id, seatId, cancellationToken));
     }
 
     private static async Task<IResult> StartAsync(

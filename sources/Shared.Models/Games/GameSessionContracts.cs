@@ -29,3 +29,16 @@ public sealed record SessionDto(
     IReadOnlyList<SeatDto> Seats,
     string? InviteCode,
     Guid? MySeatId);
+
+/// <summary>Owner adds an AI seat to a multiplayer lobby.</summary>
+public sealed record AddAiSeatRequest(string Difficulty);
+
+/// <summary>Entry of the public list of open lobbies.</summary>
+public sealed record OpenLobbyDto(
+    Guid Id,
+    string GameType,
+    string OwnerName,
+    int SeatCount,
+    int MaxSeats,
+    bool IsMine,
+    DateTimeOffset CreatedAt);
