@@ -15,4 +15,7 @@ public interface IGameSessionRepository
 
     /// <summary>The move log of a session, ordered by sequence.</summary>
     Task<IReadOnlyList<GameActionRecord>> GetActionsAsync(Guid sessionId, CancellationToken cancellationToken);
+
+    /// <summary>Running sessions where the current seat is an AI seat.</summary>
+    Task<IReadOnlyList<Guid>> GetRunningSessionsWithAiTurnAsync(CancellationToken cancellationToken);
 }

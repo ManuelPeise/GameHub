@@ -7,4 +7,6 @@ namespace Logic.Sessions;
 public sealed class NullGameEventPublisher : IGameEventPublisher
 {
     public Task PublishAsync(GameActionApplied gameEvent, CancellationToken cancellationToken) => Task.CompletedTask;
+
+    public Task PublishAiThinkingAsync(AiThinking gameEvent, CancellationToken cancellationToken) => Task.CompletedTask;
 }

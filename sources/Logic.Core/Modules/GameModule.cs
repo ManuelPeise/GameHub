@@ -58,6 +58,11 @@ public abstract class GameModule<TState, TAction>(IGameRules<TState, TAction> ru
 
     public GameProgress GetProgress(string stateJson) => rules.GetProgress(DeserializeState(stateJson));
 
+    public IReadOnlyList<(string ActionType, string? PayloadJson)> GetLegalActions(string stateJson, int seat) =>
+    [
+        .. rules.LegalActions(DeserializeState(stateJson), seat).Select(SerializeAction),
+    ];
+
     public TState DeserializeState(string stateJson) =>
         JsonSerializer.Deserialize<TState>(stateJson, JsonOptions)
         ?? throw new InvalidOperationException($"{GameType}: empty game state.");

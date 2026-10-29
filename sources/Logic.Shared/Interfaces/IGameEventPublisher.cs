@@ -6,4 +6,6 @@ namespace Logic.Shared.Interfaces;
 public interface IGameEventPublisher
 {
     Task PublishAsync(GameActionApplied gameEvent, CancellationToken cancellationToken);
+
+    Task PublishAiThinkingAsync(AiThinking gameEvent, CancellationToken cancellationToken);
 }

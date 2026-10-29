@@ -20,5 +20,8 @@ public interface IGameModule
     /// <summary>Validates and applies an action; rejected actions change nothing.</summary>
     ActionResult Apply(string stateJson, int seat, string actionType, string? payloadJson, IRandom random);
 
+    /// <summary>All currently legal actions of the given seat in transport format.</summary>
+    IReadOnlyList<(string ActionType, string? PayloadJson)> GetLegalActions(string stateJson, int seat);
+
     GameProgress GetProgress(string stateJson);
 }

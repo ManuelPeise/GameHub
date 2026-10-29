@@ -4,13 +4,17 @@ using Data.DataAccessor.Games;
 using Data.DataAccessor.Logging;
 using Data.DataAccessor.Users;
 using Logic.Core.Abstractions;
+using Logic.Core.Ai;
 using Logic.Sessions;
+using Logic.Sessions.Ai;
 using Logic.Shared.Interfaces;
 using Logic.TicTacToe;
+using Logic.TicTacToe.Ai;
 using Logic.Users;
 using Microsoft.AspNetCore.RateLimiting;
 using Services.Api.Authorization;
 using Services.Api.Endpoints;
+using Services.Api.Games;
 using Services.ServiceDefaults;
 using Shared.Models.Interfaces;
 using Shared.Models.Settings;
@@ -39,11 +43,17 @@ builder.Services.AddScoped<AccountDeletionLogic>();
 // Games: modules, the single move path and replay (endpoints follow with US-012/US-013).
 builder.Services.AddSingleton(TimeProvider.System);
 builder.Services.AddSingleton<IGameModule, TicTacToeModule>();
+builder.Services.AddSingleton<IAiStrategy<TicTacToeView, Logic.TicTacToe.Domain.PlaceMark>, RandomTicTacToeStrategy>();
+builder.Services.AddSingleton<IAiPlayer, TicTacToeAiPlayer>();
+builder.Services.AddSingleton<IAiStrategyRegistry, AiStrategyRegistry>();
+builder.Services.AddSingleton<IAiTurnScheduler, AiTurnScheduler>();
 builder.Services.AddSingleton<GameModuleRegistry>();
 builder.Services.AddSingleton<ReplayService>();
 builder.Services.AddSingleton<IGameEventPublisher, NullGameEventPublisher>();
 builder.Services.AddGameSessionStore();
 builder.Services.AddScoped<SubmitActionHandler>();
+builder.Services.AddScoped<AiTurnRunner>();
+builder.Services.AddHostedService<AiTurnWorker>();
 
 builder.Services.AddRateLimiter(options =>
 {

@@ -1,5 +1,6 @@
 using Logic.Shared.Interfaces;
 using Logic.Shared.Models;
+using Shared.Models.Games;
 
 namespace Tests.Sessions;
 
@@ -35,6 +36,7 @@ internal sealed class InMemoryGameSessionRepository : IGameSessionRepository
         Results.AddRange(write.Results);
         _sessions[write.SessionId] = session with
         {
+            CurrentSeatId = write.CurrentSeatId,
             StateJson = write.NewStateJson,
             StateVersion = write.ExpectedVersion + 1,
             Status = write.NewStatus,
@@ -45,4 +47,14 @@ internal sealed class InMemoryGameSessionRepository : IGameSessionRepository
 
     public Task<IReadOnlyList<GameActionRecord>> GetActionsAsync(Guid sessionId, CancellationToken cancellationToken) =>
         Task.FromResult<IReadOnlyList<GameActionRecord>>([.. Actions.Where(a => a.SessionId == sessionId).OrderBy(a => a.Sequence)]);
+
+    public Task<IReadOnlyList<Guid>> GetRunningSessionsWithAiTurnAsync(CancellationToken cancellationToken)
+    {
+        var result = _sessions.Values
+            .Where(session => session.Status == SessionStatus.Running && session.CurrentSeatId is { } currentSeatId
+                && session.Seats.Any(seat => seat.Id == currentSeatId && seat.Kind == SeatKind.Ai))
+            .Select(session => session.Id)
+            .ToList();
+        return Task.FromResult<IReadOnlyList<Guid>>(result);
+    }
 }

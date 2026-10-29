@@ -1,6 +1,7 @@
 using System.Text.Json;
 using Logic.Core.Model;
 using Logic.Core.Randomness;
+using Logic.Sessions.Ai;
 using Logic.Shared.Interfaces;
 using Logic.Shared.Models;
 using Shared.Models.Games;
@@ -15,7 +16,8 @@ public sealed class SubmitActionHandler(
     IGameSessionRepository repository,
     GameModuleRegistry modules,
     IGameEventPublisher publisher,
-    TimeProvider timeProvider)
+    TimeProvider timeProvider,
+    IAiTurnScheduler? aiTurnScheduler = null)
 {
     public async Task<SubmitActionResult> HandleAsync(SubmitActionCommand command, CancellationToken cancellationToken)
     {
@@ -94,7 +96,14 @@ public sealed class SubmitActionHandler(
             new GameActionApplied(session.Id, sequence, newVersion, seat.Id, command.ActionType, applied.StateJson, progress.IsFinished),
             cancellationToken).ConfigureAwait(false);
 
-        // Hook for US-011: if the next seat is an AI, the AI runner submits its move through this handler.
+        if (!progress.IsFinished
+            && progress.CurrentSeat is { } nextOrder
+            && session.Seats.Any(nextSeat => nextSeat.Order == nextOrder && nextSeat.Kind == SeatKind.Ai)
+            && aiTurnScheduler is not null)
+        {
+            await aiTurnScheduler.EnqueueAsync(session.Id, cancellationToken).ConfigureAwait(false);
+        }
+
         return new SubmitActionResult.Applied(newVersion, sequence, applied.StateJson, progress);
     }
 

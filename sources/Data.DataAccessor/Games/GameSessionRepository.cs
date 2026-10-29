@@ -3,6 +3,7 @@ using Data.Database.Entities;
 using Logic.Shared.Interfaces;
 using Logic.Shared.Models;
 using Microsoft.EntityFrameworkCore;
+using Shared.Models.Games;
 
 namespace Data.DataAccessor.Games;
 
@@ -30,12 +31,13 @@ public sealed class GameSessionRepository(GameDbContext database) : IGameSession
             session.GameType,
             session.Mode,
             session.Status,
+            session.CurrentSeatId,
             session.StateJson,
             session.StateVersion,
             session.RngSeed,
             lastSequence,
             [.. session.Seats.OrderBy(s => s.Order).Select(s =>
-                new SeatSnapshot(s.Id, s.Order, s.Kind, s.UserId, s.ConnectionStatus, s.AiStrategyVersion))]);
+                new SeatSnapshot(s.Id, s.Order, s.Kind, s.UserId, s.ConnectionStatus, s.AiDifficulty, s.AiStrategyVersion))]);
     }
 
     public async Task<bool> SaveActionAsync(ActionWrite write, CancellationToken cancellationToken)
@@ -101,6 +103,18 @@ public sealed class GameSessionRepository(GameDbContext database) : IGameSession
             .OrderBy(a => a.Sequence)
             .Select(a => new GameActionRecord(
                 a.SessionId, a.SeatId, a.Sequence, a.ActionType, a.PayloadJson, a.RandomResultJson, a.AiStrategyVersion, a.CreatedAt))
+            .ToListAsync(cancellationToken)
+            .ConfigureAwait(false);
+
+    public async Task<IReadOnlyList<Guid>> GetRunningSessionsWithAiTurnAsync(CancellationToken cancellationToken) =>
+        await database.GameSessions.AsNoTracking()
+            .Where(session => session.Status == SessionStatus.Running)
+            .Join(
+                database.Seats.AsNoTracking().Where(seat => seat.Kind == SeatKind.Ai),
+                session => session.CurrentSeatId,
+                seat => seat.Id,
+                (session, _) => session.Id)
+            .Distinct()
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
 }

@@ -9,6 +9,7 @@ public sealed record SeatSnapshot(
     SeatKind Kind,
     Guid? UserId,
     SeatConnectionStatus ConnectionStatus,
+    string? AiDifficulty,
     string? AiStrategyVersion);
 
 /// <summary>Loaded state of a session including its seats and the last sequence of the move log.</summary>
@@ -17,6 +18,7 @@ public sealed record SessionSnapshot(
     string GameType,
     GameMode Mode,
     SessionStatus Status,
+    Guid? CurrentSeatId,
     string StateJson,
     int StateVersion,
     long RngSeed,
@@ -59,3 +61,6 @@ public sealed record GameActionApplied(
     string ActionType,
     string StateJson,
     bool IsFinished);
+
+/// <summary>Event before an AI action delay starts.</summary>
+public sealed record AiThinking(Guid SessionId, Guid SeatId);
