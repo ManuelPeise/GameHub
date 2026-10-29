@@ -29,8 +29,11 @@ var api = builder.AddProject<Projects.Services_Api>("api")
     .WaitFor(mailpit)
     .WithHttpHealthCheck("/health");
 
-builder.AddViteApp("web", "../Web.App")
+var web = builder.AddViteApp("web", "../Web.App")
     .WithReference(api)
     .WaitFor(api);
+
+// Links in e-mails (e.g. the confirmation link) point to Web.App, which forwards /api to the API.
+api.WithEnvironment("App__Environment__PublicBaseUrl", web.GetEndpoint("http"));
 
 builder.Build().Run();

@@ -44,7 +44,8 @@ public sealed class AppSettingsTests
             ("App:Ai:StrategyVersions:Kniffel", "2"),
             ("App:Email:Host", "smtp.example.org"),
             ("App:Email:Port", "587"),
-            ("App:Environment:Name", "Testing"));
+            ("App:Environment:Name", "Testing"),
+            ("App:Environment:PublicBaseUrl", "https://test.gamehub.example"));
 
         Xunit.Assert.Equal(TimeSpan.FromSeconds(90), settings.Game.TurnTimeout);
         Xunit.Assert.Equal(TimeSpan.Zero, settings.Ai.ActionDelay);
@@ -66,7 +67,10 @@ public sealed class AppSettingsTests
     [Xunit.Fact]
     public void Live_WithSmtpHost_IsValid()
     {
-        var settings = Create(("App:Environment:Name", "Live"), ("App:Email:Host", "smtp.example.org"));
+        var settings = Create(
+            ("App:Environment:Name", "Live"),
+            ("App:Email:Host", "smtp.example.org"),
+            ("App:Environment:PublicBaseUrl", "https://gamehub.example"));
 
         Xunit.Assert.True(settings.Environment.IsLive);
     }
@@ -105,5 +109,34 @@ public sealed class AppSettingsTests
         var exception = CreateInvalid(("App:Game:ReconnectAttempts", "0"), ("App:Security:LoginRateLimit", "0"));
 
         Xunit.Assert.Equal(2, exception.Errors.Count);
+    }
+
+    [Xunit.Fact]
+    public void OutsideDevelopment_WithoutPublicBaseUrl_FailsAndNamesTheKey()
+    {
+        var exception = CreateInvalid(("App:Environment:Name", "Testing"));
+
+        Xunit.Assert.Contains(exception.Errors, error => error.StartsWith("App:Environment:PublicBaseUrl:", StringComparison.Ordinal));
+    }
+
+    [Xunit.Fact]
+    public void MailpitConnectionString_IsUsedWhenNoSmtpHostIsConfigured()
+    {
+        var settings = Create(("ConnectionStrings:mailpit", "Endpoint=smtp://localhost:61025"));
+
+        Xunit.Assert.Equal("localhost", settings.Email.Host);
+        Xunit.Assert.Equal(61025, settings.Email.Port);
+    }
+
+    [Xunit.Fact]
+    public void ExplicitSmtpHost_WinsOverMailpitConnectionString()
+    {
+        var settings = Create(
+            ("App:Email:Host", "smtp.example.org"),
+            ("App:Email:Port", "587"),
+            ("ConnectionStrings:mailpit", "Endpoint=smtp://localhost:61025"));
+
+        Xunit.Assert.Equal("smtp.example.org", settings.Email.Host);
+        Xunit.Assert.Equal(587, settings.Email.Port);
     }
 }

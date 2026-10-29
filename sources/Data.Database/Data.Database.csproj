@@ -3,7 +3,8 @@
   <ItemGroup>
     <!-- Aspire client integration: Npgsql EF Core provider, connection from Aspire, health check, retries, telemetry. -->
     <PackageReference Include="Aspire.Npgsql.EntityFrameworkCore.PostgreSQL" />
-    <!-- Design-time support for "dotnet ef migrations"; not shipped. -->
+    <PackageReference Include="Microsoft.AspNetCore.Identity.EntityFrameworkCore" />
+    <!-- Design-time support for "dotnet ef migrations" / Add-Migration; not shipped. -->
     <PackageReference Include="Microsoft.EntityFrameworkCore.Design">
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>

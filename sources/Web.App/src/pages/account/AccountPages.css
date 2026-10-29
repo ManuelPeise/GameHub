@@ -1,0 +1,65 @@
+.account-page {
+  max-width: 28rem;
+  margin: 3rem auto;
+  padding: 0 1rem;
+  text-align: left;
+}
+
+.account-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.account-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.account-field input {
+  font: inherit;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg);
+  color: var(--text-h);
+}
+
+.account-field input[aria-invalid="true"] {
+  border-color: #d33;
+}
+
+.account-error {
+  color: #d33;
+  font-size: 0.9em;
+  margin: 0;
+}
+
+.account-hint {
+  font-size: 0.9em;
+  margin: 0;
+  padding-left: 1.2rem;
+}
+
+.account-form button {
+  font: inherit;
+  padding: 0.6rem 1rem;
+  border: none;
+  border-radius: 6px;
+  background: var(--accent);
+  color: #fff;
+  cursor: pointer;
+}
+
+.account-form button:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.account-success {
+  padding: 1rem;
+  border: 1px solid var(--accent-border);
+  border-radius: 6px;
+  background: var(--accent-bg);
+}

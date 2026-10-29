@@ -97,6 +97,12 @@ public sealed class EnvironmentSettings
     /// <summary>Development, Testing or Live.</summary>
     public string Name { get; set; } = Development;
 
+    /// <summary>
+    /// Public address of Web.App, used for links in e-mails (e.g. https://gamehub.example.org).
+    /// Set by Aspire in development; required in Testing and Live.
+    /// </summary>
+    public string? PublicBaseUrl { get; set; }
+
     /// <summary>Shows the environment banner in the UI (always off in Live).</summary>
     public bool ShowBanner { get; set; } = true;
 

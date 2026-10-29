@@ -34,6 +34,7 @@
     <Project Path="Tests.Sessions/Tests.Sessions.csproj" />
     <Project Path="Tests.Shared/Tests.Shared.csproj" />
     <Project Path="Tests.TicTacToe/Tests.TicTacToe.csproj" />
+    <Project Path="Tests.Users/Tests.Users.csproj" />
   </Folder>
   <Folder Name="/07 Documentations/">
     <File Path="../CLAUDE.md" />

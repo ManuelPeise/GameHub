@@ -13,6 +13,9 @@ public sealed class AppSettings : IAppSettings
 {
     public const string SectionName = "App";
 
+    /// <summary>Connection string that Aspire injects for the Mailpit resource ("Endpoint=smtp://host:port").</summary>
+    public const string MailpitConnectionName = "mailpit";
+
     private static readonly string[] EnvironmentNames =
     [
         EnvironmentSettings.Development, EnvironmentSettings.Testing, EnvironmentSettings.Live,
@@ -25,6 +28,7 @@ public sealed class AppSettings : IAppSettings
         ArgumentNullException.ThrowIfNull(configuration);
 
         configuration.GetSection(SectionName).Bind(this);
+        ApplyMailpitConnection(configuration.GetConnectionString(MailpitConnectionName));
 
         var errors = Validate();
         if (errors.Count > 0)
@@ -46,6 +50,35 @@ public sealed class AppSettings : IAppSettings
     public SecuritySettings Security { get; } = new();
 
     public EnvironmentSettings Environment { get; } = new();
+
+    /// <summary>
+    /// In development Aspire provides Mailpit only as a connection string. It is used when no SMTP host
+    /// is configured explicitly.
+    /// </summary>
+    private void ApplyMailpitConnection(string? connectionString)
+    {
+        if (!string.IsNullOrWhiteSpace(Email.Host) || string.IsNullOrWhiteSpace(connectionString))
+        {
+            return;
+        }
+
+        foreach (var part in connectionString.Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+        {
+            var separator = part.IndexOf('=');
+            if (separator <= 0
+                || !part[..separator].Equals("Endpoint", StringComparison.OrdinalIgnoreCase)
+                || !Uri.TryCreate(part[(separator + 1)..], UriKind.Absolute, out var endpoint))
+            {
+                continue;
+            }
+
+            Email.Host = endpoint.Host;
+            if (endpoint.Port > 0)
+            {
+                Email.Port = endpoint.Port;
+            }
+        }
+    }
 
     private List<string> Validate()
     {
@@ -73,6 +106,11 @@ public sealed class AppSettings : IAppSettings
         Require(Email.Port is > 0 and <= 65535, "Email:Port", "must be between 1 and 65535");
         Require(!string.IsNullOrWhiteSpace(Email.SenderAddress), "Email:SenderAddress", "is required");
 
+        Require(Environment.Name == EnvironmentSettings.Development || IsAbsoluteHttpUrl(Environment.PublicBaseUrl),
+            "Environment:PublicBaseUrl", "is required as absolute http(s) URL outside Development");
+        Require(string.IsNullOrEmpty(Environment.PublicBaseUrl) || IsAbsoluteHttpUrl(Environment.PublicBaseUrl),
+            "Environment:PublicBaseUrl", "must be an absolute http(s) URL");
+
         Require(!string.IsNullOrWhiteSpace(Backup.Directory), "Backup:Directory", "is required");
         Require(Backup.KeepDaily >= 0, "Backup:KeepDaily", "must not be negative");
         Require(Backup.KeepWeekly >= 0, "Backup:KeepWeekly", "must not be negative");
@@ -89,4 +127,8 @@ public sealed class AppSettings : IAppSettings
 
         return errors;
     }
+
+    private static bool IsAbsoluteHttpUrl(string? value) =>
+        Uri.TryCreate(value, UriKind.Absolute, out var uri)
+        && (uri.Scheme == Uri.UriSchemeHttp || uri.Scheme == Uri.UriSchemeHttps);
 }

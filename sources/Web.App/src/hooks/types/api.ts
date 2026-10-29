@@ -1,11 +1,17 @@
 export type ApiParams = Record<string, string | number | boolean>;
 
-export type ApiOptions<TModel> = {
+/**
+ * Options of a request. TModel is the response type, TBody the request body type
+ * (defaults to TModel for endpoints that send and receive the same model).
+ */
+export type ApiOptions<TModel, TBody = TModel> = {
   /** Absolute URL, or relative to window.location.origin. */
   serviceUrl: string;
   params?: ApiParams;
-  body?: TModel;
+  body?: TBody;
   signal?: AbortSignal;
+  /** Phantom marker so TModel stays part of the type. */
+  readonly __model?: TModel;
 };
 
 export type StatelessApiResult<TModel> = {
