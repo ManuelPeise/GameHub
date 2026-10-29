@@ -1,7 +1,12 @@
 using System.Threading.RateLimiting;
 using Data.Database;
+using Data.DataAccessor.Games;
 using Data.DataAccessor.Logging;
 using Data.DataAccessor.Users;
+using Logic.Core.Abstractions;
+using Logic.Sessions;
+using Logic.Shared.Interfaces;
+using Logic.TicTacToe;
 using Logic.Users;
 using Microsoft.AspNetCore.RateLimiting;
 using Services.Api.Authorization;
@@ -30,6 +35,15 @@ builder.Services.AddScoped<LoginLogic>();
 builder.Services.AddScoped<AccountRecoveryLogic>();
 builder.Services.AddScoped<TwoFactorLogic>();
 builder.Services.AddScoped<AccountDeletionLogic>();
+
+// Games: modules, the single move path and replay (endpoints follow with US-012/US-013).
+builder.Services.AddSingleton(TimeProvider.System);
+builder.Services.AddSingleton<IGameModule, TicTacToeModule>();
+builder.Services.AddSingleton<GameModuleRegistry>();
+builder.Services.AddSingleton<ReplayService>();
+builder.Services.AddSingleton<IGameEventPublisher, NullGameEventPublisher>();
+builder.Services.AddGameSessionStore();
+builder.Services.AddScoped<SubmitActionHandler>();
 
 builder.Services.AddRateLimiter(options =>
 {
