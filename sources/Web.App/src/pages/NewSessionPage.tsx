@@ -17,6 +17,7 @@ const NewSessionPage: React.FC = () => {
   );
   const [difficulty, setDifficulty] = React.useState("Easy");
   const [preferredSeat, setPreferredSeat] = React.useState(0);
+  const [gameType, setGameType] = React.useState<"TicTacToe" | "Kniffel">("TicTacToe");
   const [message, setMessage] = React.useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
@@ -57,7 +58,7 @@ const NewSessionPage: React.FC = () => {
 
   const openSingleplayer = openSessions.find(
     (session) =>
-      session.mode === "Singleplayer" && session.gameType === "TicTacToe",
+      session.mode === "Singleplayer" && session.gameType === gameType,
   );
 
   const submit = async (event: React.FormEvent<HTMLFormElement>) => {
@@ -67,10 +68,10 @@ const NewSessionPage: React.FC = () => {
     setIsSubmitting(true);
 
     const request: CreateSessionRequest = {
-      gameType: "TicTacToe",
+      gameType,
       mode,
       difficulty: mode === "Singleplayer" ? difficulty : null,
-      preferredSeat: mode === "Singleplayer" ? preferredSeat : 0,
+      preferredSeat: mode === "Singleplayer" && gameType === "TicTacToe" ? preferredSeat : 0,
     };
 
     try {
@@ -130,6 +131,18 @@ const NewSessionPage: React.FC = () => {
       )}
       <form className="account-form" onSubmit={submit}>
         <div className="account-field">
+          <label htmlFor="game">Spiel</label>
+          <select
+            id="game"
+            value={gameType}
+            onChange={(event) => setGameType(event.target.value as "TicTacToe" | "Kniffel")}
+          >
+            <option value="TicTacToe">Tic-Tac-Toe</option>
+            <option value="Kniffel">Kniffel (2–4 Spieler)</option>
+          </select>
+        </div>
+
+        <div className="account-field">
           <label htmlFor="mode">Modus</label>
           <select
             id="mode"
@@ -158,7 +171,7 @@ const NewSessionPage: React.FC = () => {
           </div>
         )}
 
-        {mode === "Singleplayer" && (
+        {mode === "Singleplayer" && gameType === "TicTacToe" && (
           <div className="account-field">
             <label htmlFor="symbol">Du spielst</label>
             <select

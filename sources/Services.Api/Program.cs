@@ -11,6 +11,8 @@ using Logic.Sessions.Ai;
 using Logic.Sessions.Connections;
 using Logic.Sessions.History;
 using Logic.Shared.Interfaces;
+using Logic.Kniffel;
+using Logic.Kniffel.Ai;
 using Logic.TicTacToe;
 using Logic.TicTacToe.Ai;
 using Logic.Users;
@@ -55,6 +57,8 @@ builder.Services.AddSignalR()
 builder.Services.AddSingleton(TimeProvider.System);
 builder.Services.AddSingleton<TicTacToeModule>();
 builder.Services.AddSingleton<IGameModule>(services => services.GetRequiredService<TicTacToeModule>());
+builder.Services.AddSingleton<KniffelModule>();
+builder.Services.AddSingleton<IGameModule>(services => services.GetRequiredService<KniffelModule>());
 // One AI player per difficulty; a new level only needs a new strategy class and a line here.
 builder.Services.AddSingleton<IAiPlayer>(services =>
     new TicTacToeAiPlayer(services.GetRequiredService<TicTacToeModule>(), new RandomTicTacToeStrategy()));
@@ -62,6 +66,12 @@ builder.Services.AddSingleton<IAiPlayer>(services =>
     new TicTacToeAiPlayer(services.GetRequiredService<TicTacToeModule>(), new BlockingTicTacToeStrategy()));
 builder.Services.AddSingleton<IAiPlayer>(services =>
     new TicTacToeAiPlayer(services.GetRequiredService<TicTacToeModule>(), new MinimaxTicTacToeStrategy()));
+builder.Services.AddSingleton<IAiPlayer>(services =>
+    new KniffelAiPlayer(services.GetRequiredService<KniffelModule>(), KniffelAiStrategy.Easy));
+builder.Services.AddSingleton<IAiPlayer>(services =>
+    new KniffelAiPlayer(services.GetRequiredService<KniffelModule>(), KniffelAiStrategy.Medium));
+builder.Services.AddSingleton<IAiPlayer>(services =>
+    new KniffelAiPlayer(services.GetRequiredService<KniffelModule>(), KniffelAiStrategy.Hard));
 builder.Services.AddSingleton<IAiStrategyRegistry, AiStrategyRegistry>();
 builder.Services.AddSingleton<IAiTurnScheduler, AiTurnScheduler>();
 builder.Services.AddSingleton<GameModuleRegistry>();

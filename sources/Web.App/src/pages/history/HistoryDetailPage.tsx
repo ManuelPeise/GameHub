@@ -6,8 +6,11 @@ import {
   sessionUrls,
   type GameHistoryDetailDto,
   type HistoryActionDto,
+  type SeatDto,
 } from "../../api/sessions";
 import { getErrorMessage, sendRequest } from "../../hooks/apiClient";
+import { categoryLabels, parseKniffelState } from "../../games/kniffel/kniffel";
+import KniffelSheetTable from "../../games/kniffel/KniffelSheetTable";
 import "../account/AccountPages.css";
 import "./HistoryPages.css";
 
@@ -48,12 +51,24 @@ const describeAction = (action: HistoryActionDto): string => {
     return `setzt auf ${cellNames[cell] ?? `Feld ${cell}`}`;
   }
 
+  const payload = parseJson(action.payloadJson);
+  const heldMask = payload?.heldMask;
+  const category = payload?.category;
+  if (action.actionType === "Roll" && action.randomResultJson) {
+    const held = typeof heldMask === "number" ? heldMask : 0;
+    const draws = (JSON.parse(action.randomResultJson) as number[]).map((draw) => draw + 1);
+    return held ? `würfelt ${draws.join(", ")} (Würfel gehalten)` : `würfelt ${draws.join(", ")}`;
+  }
+  if (action.actionType === "Score" && typeof category === "string" && category in categoryLabels) {
+    return `wertet ${categoryLabels[category as keyof typeof categoryLabels]}`;
+  }
+
   const random = action.randomResultJson ? ` – Zufall: ${action.randomResultJson}` : "";
   return `${action.actionType}${action.payloadJson ? ` ${action.payloadJson}` : ""}${random}`;
 };
 
 /** Read-only view of a game state; Tic-Tac-Toe as board, other games as JSON until they have their own view. */
-const StateView: React.FC<{ gameType: string; stateJson: string }> = ({ gameType, stateJson }) => {
+const StateView: React.FC<{ gameType: string; stateJson: string; seats: SeatDto[] }> = ({ gameType, stateJson, seats }) => {
   const state = parseJson(stateJson);
   const board = state?.board;
   if (gameType === "TicTacToe" && typeof board === "string") {
@@ -72,6 +87,18 @@ const StateView: React.FC<{ gameType: string; stateJson: string }> = ({ gameType
           </div>
         ))}
       </div>
+    );
+  }
+
+  const kniffel = gameType === "Kniffel" ? parseKniffelState(stateJson) : null;
+  if (kniffel) {
+    return (
+      <>
+        <p aria-label="Würfel">
+          Würfel: {kniffel.dice.some((die) => die > 0) ? kniffel.dice.join(" · ") : "–"} (Wurf {kniffel.rollsUsed} von 3)
+        </p>
+        <KniffelSheetTable state={kniffel} seats={seats} />
+      </>
     );
   }
 
@@ -137,7 +164,17 @@ const HistoryDetailPage: React.FC<HistoryDetailPageProps> = ({ sessionId }) => {
         <h2>
           Nachspielen – Schritt {step} von {actions.length}
         </h2>
-        <StateView gameType={entry.gameType} stateJson={stateJson} />
+        <StateView
+          gameType={entry.gameType}
+          stateJson={stateJson}
+          seats={entry.seats.map((seat) => ({
+            id: seat.seatId,
+            order: seat.order,
+            kind: seat.kind,
+            displayName: seat.displayName,
+            connectionStatus: seat.outcome === "Removed" ? "Removed" : "Connected",
+          }))}
+        />
         <div className="history-controls">
           <button type="button" onClick={() => setStep(0)} disabled={step === 0} aria-label="Zum Anfang">
             ⏮

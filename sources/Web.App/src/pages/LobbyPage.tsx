@@ -2,6 +2,7 @@ import React from "react";
 import { getErrorMessage, sendRequest } from "../hooks/apiClient";
 import ConnectionBanner from "../components/ConnectionBanner";
 import TurnTimer from "../components/TurnTimer";
+import KniffelGame from "../games/kniffel/KniffelGame";
 import TicTacToeGame from "../games/tictactoe/TicTacToeGame";
 import { useGameSessionEvents } from "../hooks/gameHub";
 import {
@@ -168,7 +169,7 @@ const LobbyPage: React.FC<LobbyPageProps> = ({ sessionId, inviteCode }) => {
 
   const mySeat = session.seats.find((seat) => seat.id === session.mySeatId);
   const currentSeat = session.seats.find((seat) => seat.id === session.currentSeatId);
-  const hasBoard = session.gameType === "TicTacToe" && session.status !== "Lobby";
+  const hasBoard = (session.gameType === "TicTacToe" || session.gameType === "Kniffel") && session.status !== "Lobby";
   const canStart = session.status === "Lobby" && mySeat?.order === 0;
   const inviteLink = session.inviteCode ? `${window.location.origin}${sessionPagePaths.joinPrefix}${session.inviteCode}` : null;
 
@@ -240,7 +241,11 @@ const LobbyPage: React.FC<LobbyPageProps> = ({ sessionId, inviteCode }) => {
       )}
 
       {hasBoard && (
-        <TicTacToeGame session={session} onChanged={(updated) => (updated ? setSession(updated) : void reload())} />
+        session.gameType === "Kniffel" ? (
+          <KniffelGame session={session} onChanged={(updated) => (updated ? setSession(updated) : void reload())} />
+        ) : (
+          <TicTacToeGame session={session} onChanged={(updated) => (updated ? setSession(updated) : void reload())} />
+        )
       )}
 
       {!hasBoard && session.status === "Running" && (

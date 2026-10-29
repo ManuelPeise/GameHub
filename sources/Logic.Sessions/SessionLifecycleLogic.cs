@@ -79,7 +79,8 @@ public sealed class SessionLifecycleLogic(
                 }
             }
 
-            var seatCount = module.MaxSeats;
+            // Singleplayer: the player against one AI opponent (the seat model allows more).
+            var seatCount = module.MinSeats;
             if (seatCount < 2)
             {
                 return new SessionLifecycleOutcome.Failure(SessionLifecycleFailureKind.InvalidRequest, "Für dieses Spiel ist kein Singleplayer möglich.");
@@ -107,7 +108,7 @@ public sealed class SessionLifecycleLogic(
                         order,
                         SeatKind.Human,
                         account.DisplayName,
-                        Symbol(order),
+                        Symbol(request.GameType, order),
                         userId,
                         null,
                         null,
@@ -121,7 +122,7 @@ public sealed class SessionLifecycleLogic(
                         order,
                         SeatKind.Ai,
                         $"KI ({request.Difficulty})",
-                        Symbol(order),
+                        Symbol(request.GameType, order),
                         null,
                         request.Difficulty,
                         strategy.Version,
@@ -185,7 +186,7 @@ public sealed class SessionLifecycleLogic(
             0,
             SeatKind.Human,
             account.DisplayName,
-            Symbol(0),
+            Symbol(request.GameType, 0),
             userId,
             null,
             null,
@@ -355,7 +356,7 @@ public sealed class SessionLifecycleLogic(
                 order,
                 SeatKind.Ai,
                 $"KI ({strategy.Difficulty})",
-                Symbol(order),
+                Symbol(session.GameType, order),
                 null,
                 strategy.Difficulty,
                 strategy.Version,
@@ -396,7 +397,7 @@ public sealed class SessionLifecycleLogic(
             var reorders = session.Seats
                 .Where(candidate => candidate.Order > seat.Order)
                 .OrderBy(candidate => candidate.Order)
-                .Select(candidate => new SeatReorder(candidate.Id, candidate.Order - 1, Symbol(candidate.Order - 1)))
+                .Select(candidate => new SeatReorder(candidate.Id, candidate.Order - 1, Symbol(session.GameType, candidate.Order - 1)))
                 .ToList();
 
             if (await repository.RemoveSeatAsync(
@@ -499,7 +500,7 @@ public sealed class SessionLifecycleLogic(
                 session.Seats.Count,
                 SeatKind.Human,
                 account.DisplayName,
-                Symbol(session.Seats.Count),
+                Symbol(session.GameType, session.Seats.Count),
                 userId,
                 null,
                 null,
@@ -647,7 +648,7 @@ public sealed class SessionLifecycleLogic(
                 seat.Order,
                 seat.Kind,
                 seat.DisplayName,
-                Symbol(seat.Order),
+                Symbol(previous.GameType, seat.Order),
                 seat.UserId,
                 seat.AiDifficulty,
                 seat.AiStrategyVersion,
@@ -761,5 +762,5 @@ public sealed class SessionLifecycleLogic(
         return BitConverter.ToInt64(bytes);
     }
 
-    private static string? Symbol(int order) => SeatSymbols.For(order);
+    private static string? Symbol(string gameType, int order) => SeatSymbols.For(gameType, order);
 }

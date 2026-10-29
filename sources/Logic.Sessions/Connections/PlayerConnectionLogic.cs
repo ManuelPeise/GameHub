@@ -300,7 +300,7 @@ public sealed class PlayerConnectionLogic(
         var reorders = session.Seats
             .Where(candidate => candidate.Order > seat.Order)
             .OrderBy(candidate => candidate.Order)
-            .Select(candidate => new SeatReorder(candidate.Id, candidate.Order - 1, SeatSymbols.For(candidate.Order - 1)))
+            .Select(candidate => new SeatReorder(candidate.Id, candidate.Order - 1, SeatSymbols.For(session.GameType, candidate.Order - 1)))
             .ToList();
         var now = timeProvider.GetUtcNow();
         if (await repository.RemoveSeatAsync(new SeatRemoveWrite(session.Id, session.StateVersion, seat.Id, reorders, now), cancellationToken)
