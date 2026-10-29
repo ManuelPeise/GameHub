@@ -9,6 +9,7 @@ public static class GameSessionsRegistration
     public static IServiceCollection AddGameSessionStore(this IServiceCollection services)
     {
         services.AddScoped<IGameSessionRepository, GameSessionRepository>();
+        services.AddScoped<IStatisticsStore, Statistics.StatisticsStore>();
         return services;
     }
 }

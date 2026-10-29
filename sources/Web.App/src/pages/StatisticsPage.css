@@ -1,0 +1,40 @@
+.statistics-table {
+  width: 100%;
+  margin: 0.75rem 0;
+  border-collapse: collapse;
+  font-variant-numeric: tabular-nums;
+}
+
+.statistics-table caption {
+  text-align: left;
+  font-weight: 600;
+  padding-bottom: 0.25rem;
+}
+
+.statistics-table th,
+.statistics-table td {
+  padding: 0.25rem 0.5rem;
+  border-bottom: 1px solid var(--border, #e2e2e8);
+  text-align: right;
+}
+
+.statistics-table th[scope="row"],
+.statistics-table thead th:first-child {
+  text-align: left;
+}
+
+.statistics-me {
+  font-weight: 600;
+  color: var(--accent, #aa3bff);
+}
+
+.statistics-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.statistics-note {
+  font-size: 0.85rem;
+  opacity: 0.75;
+}

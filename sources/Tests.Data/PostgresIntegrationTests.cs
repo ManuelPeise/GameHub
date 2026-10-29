@@ -1,6 +1,7 @@
 using Data.Database;
 using Data.Database.Entities;
 using Data.DataAccessor.Games;
+using Data.DataAccessor.Statistics;
 using Logic.Shared.Models;
 using Microsoft.EntityFrameworkCore;
 using Shared.Models.Games;
@@ -176,5 +177,37 @@ public sealed class PostgresIntegrationTests(PostgresDatabase postgres) : Xunit.
         var history = await repository.GetHistoryAsync(owner, 0, 10, CancellationToken.None);
         var entry = Xunit.Assert.Single(history, record => record.SessionId == running.Id);
         Xunit.Assert.Equal(2, entry.Seats.Count);
+    }
+
+    [Xunit.Fact]
+    public async Task StatisticsStore_ReturnsHumanResultsOfFinishedSessions_WithAiDifficulty()
+    {
+        await using var database = Context();
+        var player = await AddUserAsync(database, "player");
+        var repository = new GameSessionRepository(database);
+        var human = HumanSeat(0, player, "Player");
+        var ai = new SeatCreateWrite(Guid.NewGuid(), 1, SeatKind.Ai, "KI (Hard)", null, null, "Hard", "1", SeatConnectionStatus.Connected, null);
+        var session = Lobby(player, human, ai) with { Mode = GameMode.Singleplayer, Status = SessionStatus.Running, GameType = GameTypes.TicTacToe };
+        Xunit.Assert.True(await repository.CreateSessionAsync(session, CancellationToken.None));
+        Xunit.Assert.True(await repository.SaveActionAsync(
+            new ActionWrite(
+                session.Id,
+                0,
+                new GameActionRecord(session.Id, human.Id, 1, "PlaceMark", "{\"cell\":4}", null, null, Now),
+                "{}",
+                SessionStatus.Finished,
+                null,
+                [new SeatResultWrite(human.Id, GameOutcome.Win, 1, null), new SeatResultWrite(ai.Id, GameOutcome.Loss, 2, null)]),
+            CancellationToken.None));
+
+        var store = new StatisticsStore(database);
+        var rows = await store.GetResultsAsync(player, null, null, null, CancellationToken.None);
+
+        var row = Xunit.Assert.Single(rows);
+        Xunit.Assert.Equal(GameOutcome.Win, row.Outcome);
+        Xunit.Assert.Equal("Hard", row.AiDifficulty);
+        Xunit.Assert.Equal("player", row.DisplayName);
+        Xunit.Assert.False(row.IsDeleted);
+        Xunit.Assert.Empty(await store.GetResultsAsync(player, GameMode.Multiplayer, null, null, CancellationToken.None));
     }
 }

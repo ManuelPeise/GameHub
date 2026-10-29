@@ -171,3 +171,19 @@ public sealed record HistoryRecord(
 
 /// <summary>A new round was started from a finished session.</summary>
 public sealed record RematchCreated(Guid PreviousSessionId, Guid NewSessionId);
+
+/// <summary>
+/// Result of one human seat in a finished session, for statistics. <see cref="AiDifficulty"/> is the
+/// difficulty of the AI opponent in singleplayer; <see cref="IsDeleted"/> marks pseudonymized accounts.
+/// </summary>
+public sealed record ResultRow(
+    Guid SessionId,
+    string GameType,
+    GameMode Mode,
+    DateTimeOffset EndedAt,
+    Guid UserId,
+    string DisplayName,
+    bool IsDeleted,
+    GameOutcome Outcome,
+    int? Score,
+    string? AiDifficulty);
