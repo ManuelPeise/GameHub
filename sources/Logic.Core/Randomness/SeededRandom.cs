@@ -26,6 +26,20 @@ public sealed class SeededRandom : IRandom
         }
     }
 
+    /// <summary>
+    /// Random source for the AI decision before an action. Separate from <see cref="ForAction"/>, so the
+    /// AI's choices are not correlated with the draws of the domain (e.g. it cannot "know" upcoming dice).
+    /// </summary>
+    public static SeededRandom ForAiDecision(long sessionSeed, int sequence)
+    {
+        unchecked
+        {
+            return ForAction(sessionSeed ^ AiStreamSalt, sequence);
+        }
+    }
+
+    private const long AiStreamSalt = 0x5DEECE66DL;
+
     public int Next(int maxExclusive)
     {
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(maxExclusive);

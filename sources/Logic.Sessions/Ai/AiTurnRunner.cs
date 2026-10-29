@@ -55,7 +55,7 @@ public sealed class AiTurnRunner(
             }
 
             var nextSequence = session.LastSequence + 1;
-            var random = SeededRandom.ForAction(session.RngSeed, nextSequence);
+            var random = SeededRandom.ForAiDecision(session.RngSeed, nextSequence);
             var player = strategies.Get(session.GameType, seat.AiDifficulty);
             var (actionType, payloadJson) = player.ChooseAction(session.StateJson, seat.Order, random);
 
