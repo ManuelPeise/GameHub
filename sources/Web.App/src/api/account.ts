@@ -26,7 +26,36 @@ export type CurrentUserResponse = {
   email: string;
   displayName: string;
   roles: string[];
+  twoFactorEnabled: boolean;
 };
+
+export type TwoFactorLoginRequest = {
+  code: string;
+  rememberMe: boolean;
+};
+
+export type RecoveryCodeLoginRequest = {
+  recoveryCode: string;
+};
+
+export type TwoFactorSetupResponse = {
+  enabled: boolean;
+  sharedKey: string;
+  authenticatorUri: string;
+};
+
+export type EnableTwoFactorRequest = {
+  code: string;
+};
+
+export type RecoveryCodesResponse = {
+  recoveryCodes: string[];
+};
+
+export const roleNames = {
+  player: "Player",
+  administrator: "Administrator",
+} as const;
 
 export type EmailRequest = {
   email: string;
@@ -47,7 +76,9 @@ export type LoginErrorCode =
   | "invalid_credentials"
   | "locked_out"
   | "email_not_confirmed"
-  | "account_disabled";
+  | "account_disabled"
+  | "two_factor_required"
+  | "invalid_two_factor_code";
 
 export const accountUrls = {
   passwordRules: "/api/account/password-rules",
@@ -55,6 +86,11 @@ export const accountUrls = {
   login: "/api/account/login",
   logout: "/api/account/logout",
   me: "/api/account/me",
+  loginTwoFactor: "/api/account/login-2fa",
+  loginRecovery: "/api/account/login-recovery",
+  twoFactor: "/api/account/two-factor",
+  enableTwoFactor: "/api/account/two-factor/enable",
+  adminStatus: "/api/admin/status",
   forgotPassword: "/api/account/forgot-password",
   resetPassword: "/api/account/reset-password",
   resendConfirmation: "/api/account/resend-confirmation",
@@ -68,4 +104,5 @@ export const pagePaths = {
   forgotPassword: "/forgot-password",
   resetPassword: "/reset-password",
   emailConfirmed: "/email-confirmed",
+  admin: "/admin",
 } as const;

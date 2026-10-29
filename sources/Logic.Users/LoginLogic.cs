@@ -24,15 +24,38 @@ public sealed class LoginLogic(
 
         var outcome = await accountStore.PasswordSignInAsync(email, request.Password, request.RememberMe, cancellationToken);
 
-        var succeeded = outcome.Result == LoginResult.Succeeded;
-        await auditLog.WriteAsync(
-            new AuditRecord(
-                succeeded ? AuditActions.LoginSucceeded : AuditActions.LoginFailed,
-                succeeded ? AuditResult.Success : AuditResult.Failure,
-                outcome.UserId,
-                Details: succeeded ? null : new Dictionary<string, string> { ["reason"] = outcome.Result.ToString() }),
-            cancellationToken);
+        // The first step of a two-factor login is not a login yet; it is audited with the second step.
+        if (outcome.Result != LoginResult.RequiresTwoFactor)
+        {
+            await AuditLoginAsync(outcome, "password", cancellationToken);
+        }
 
+        return outcome;
+    }
+
+    /// <summary>Second step after <see cref="LoginResult.RequiresTwoFactor"/>: code of the authenticator app.</summary>
+    public async Task<LoginOutcome> LoginWithTwoFactorAsync(TwoFactorLoginRequest request, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+
+        var outcome = string.IsNullOrWhiteSpace(request.Code)
+            ? new LoginOutcome(LoginResult.InvalidCredentials, null)
+            : await accountStore.TwoFactorSignInAsync(request.Code, request.RememberMe, cancellationToken);
+
+        await AuditLoginAsync(outcome, "authenticator", cancellationToken);
+        return outcome;
+    }
+
+    /// <summary>Second step with a recovery code instead of the authenticator app.</summary>
+    public async Task<LoginOutcome> LoginWithRecoveryCodeAsync(RecoveryCodeLoginRequest request, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+
+        var outcome = string.IsNullOrWhiteSpace(request.RecoveryCode)
+            ? new LoginOutcome(LoginResult.InvalidCredentials, null)
+            : await accountStore.RecoveryCodeSignInAsync(request.RecoveryCode, cancellationToken);
+
+        await AuditLoginAsync(outcome, "recoveryCode", cancellationToken);
         return outcome;
     }
 
@@ -48,4 +71,22 @@ public sealed class LoginLogic(
 
     public Task<AccountInfo?> GetCurrentUserAsync(Guid userId, CancellationToken cancellationToken) =>
         accountStore.FindAsync(userId, cancellationToken);
+
+    private Task AuditLoginAsync(LoginOutcome outcome, string method, CancellationToken cancellationToken)
+    {
+        var succeeded = outcome.Result == LoginResult.Succeeded;
+        var details = new Dictionary<string, string> { ["method"] = method };
+        if (!succeeded)
+        {
+            details["reason"] = outcome.Result.ToString();
+        }
+
+        return auditLog.WriteAsync(
+            new AuditRecord(
+                succeeded ? AuditActions.LoginSucceeded : AuditActions.LoginFailed,
+                succeeded ? AuditResult.Success : AuditResult.Failure,
+                outcome.UserId,
+                Details: details),
+            cancellationToken);
+    }
 }

@@ -13,7 +13,7 @@ internal sealed class FakeAccountStore : IUserAccountStore
 
     public LoginOutcome LoginOutcome { get; set; } = new(LoginResult.Succeeded, UserId);
 
-    public AccountInfo? Account { get; set; } = new(UserId, "max@example.org", "Max", ["Player"]);
+    public AccountInfo? Account { get; set; } = new(UserId, "max@example.org", "Max", ["Player"], false);
 
     public AccountToken? Token { get; set; } = new(UserId, "max@example.org", "Max", "reset/token");
 
@@ -41,6 +41,30 @@ internal sealed class FakeAccountStore : IUserAccountStore
         SignIns.Add((email, persistent));
         return Task.FromResult(LoginOutcome);
     }
+
+    public LoginOutcome SecondFactorOutcome { get; set; } = new(LoginResult.Succeeded, UserId);
+
+    public IReadOnlyList<string>? RecoveryCodes { get; set; } = ["code-1", "code-2"];
+
+    public List<string> SecondFactorCodes { get; } = [];
+
+    public Task<LoginOutcome> TwoFactorSignInAsync(string code, bool persistent, CancellationToken cancellationToken)
+    {
+        SecondFactorCodes.Add(code);
+        return Task.FromResult(SecondFactorOutcome);
+    }
+
+    public Task<LoginOutcome> RecoveryCodeSignInAsync(string recoveryCode, CancellationToken cancellationToken)
+    {
+        SecondFactorCodes.Add(recoveryCode);
+        return Task.FromResult(SecondFactorOutcome);
+    }
+
+    public Task<TwoFactorSetup?> GetTwoFactorSetupAsync(Guid userId, CancellationToken cancellationToken) =>
+        Task.FromResult<TwoFactorSetup?>(new TwoFactorSetup(false, "KEY", "otpauth://totp/GameHub:max?secret=KEY"));
+
+    public Task<IReadOnlyList<string>?> EnableTwoFactorAsync(Guid userId, string code, CancellationToken cancellationToken) =>
+        Task.FromResult(RecoveryCodes);
 
     public Task SignOutAsync(CancellationToken cancellationToken)
     {

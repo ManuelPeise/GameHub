@@ -89,6 +89,7 @@ public static class UserAccountsRegistration
             .AddDefaultTokenProviders();
 
         builder.Services.AddScoped<IUserAccountStore, UserAccountStore>();
+        builder.Services.AddScoped<AccountSeeder>();
         builder.Services.AddScoped<IAuditLog, AuditLog>();
         builder.Services.AddScoped<IEmailSender, SmtpEmailSender>();
 

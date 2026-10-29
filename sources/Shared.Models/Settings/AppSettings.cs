@@ -111,6 +111,9 @@ public sealed class AppSettings : IAppSettings
         Require(string.IsNullOrEmpty(Environment.PublicBaseUrl) || IsAbsoluteHttpUrl(Environment.PublicBaseUrl),
             "Environment:PublicBaseUrl", "must be an absolute http(s) URL");
 
+        Require(Environment.Name == EnvironmentSettings.Development || string.IsNullOrEmpty(Environment.SeedPassword),
+            "Environment:SeedPassword", "is only allowed in Development");
+
         Require(!string.IsNullOrWhiteSpace(Backup.Directory), "Backup:Directory", "is required");
         Require(Backup.KeepDaily >= 0, "Backup:KeepDaily", "must not be negative");
         Require(Backup.KeepWeekly >= 0, "Backup:KeepWeekly", "must not be negative");

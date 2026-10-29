@@ -1,7 +1,7 @@
 import React from "react";
 import { sendRequest } from "../hooks/apiClient";
 import { useStatefulApi } from "../hooks/useStatefulApi";
-import { accountUrls, pagePaths, type CurrentUserResponse } from "../api/account";
+import { accountUrls, pagePaths, roleNames, type CurrentUserResponse } from "../api/account";
 import "./account/AccountPages.css";
 
 /** Start page: shows the signed-in user, otherwise links to login and registration. */
@@ -30,6 +30,11 @@ const HomePage: React.FC = () => {
           <p>
             Angemeldet als <strong>{currentUser.data.displayName}</strong> ({currentUser.data.email})
           </p>
+          {currentUser.data.roles.includes(roleNames.administrator) && (
+            <p className="account-links">
+              <a href={pagePaths.admin}>Administration</a>
+            </p>
+          )}
           <div className="account-form">
             <button type="button" onClick={() => void logout()}>
               Abmelden

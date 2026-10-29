@@ -29,7 +29,7 @@ public sealed class LoginLogicTests
         Xunit.Assert.Equal(AuditActions.LoginSucceeded, audit.Action);
         Xunit.Assert.Equal(AuditResult.Success, audit.Result);
         Xunit.Assert.Equal(FakeAccountStore.UserId, audit.UserId);
-        Xunit.Assert.Null(audit.Details);
+        Xunit.Assert.Equal("password", audit.Details!["method"]);
     }
 
     [Xunit.Theory]
@@ -77,5 +77,50 @@ public sealed class LoginLogicTests
 
         Xunit.Assert.Equal(1, _store.SignOuts);
         Xunit.Assert.Empty(_audit.Records);
+    }
+
+    [Xunit.Fact]
+    public async Task PasswordStepOfTwoFactorLogin_IsNotAuditedYet()
+    {
+        _store.LoginOutcome = new LoginOutcome(LoginResult.RequiresTwoFactor, FakeAccountStore.UserId);
+
+        var outcome = await _logic.LoginAsync(new LoginRequest("max@example.org", "Geheim12345", false), CancellationToken.None);
+
+        Xunit.Assert.Equal(LoginResult.RequiresTwoFactor, outcome.Result);
+        Xunit.Assert.Empty(_audit.Records);
+    }
+
+    [Xunit.Fact]
+    public async Task TwoFactorStep_Success_IsAuditedWithMethod()
+    {
+        var outcome = await _logic.LoginWithTwoFactorAsync(new TwoFactorLoginRequest("123456", false), CancellationToken.None);
+
+        Xunit.Assert.Equal(LoginResult.Succeeded, outcome.Result);
+        Xunit.Assert.Equal("123456", Xunit.Assert.Single(_store.SecondFactorCodes));
+        var audit = Xunit.Assert.Single(_audit.Records);
+        Xunit.Assert.Equal(AuditActions.LoginSucceeded, audit.Action);
+        Xunit.Assert.Equal("authenticator", audit.Details!["method"]);
+    }
+
+    [Xunit.Fact]
+    public async Task RecoveryCodeStep_Failure_IsAudited()
+    {
+        _store.SecondFactorOutcome = new LoginOutcome(LoginResult.InvalidCredentials, FakeAccountStore.UserId);
+
+        var outcome = await _logic.LoginWithRecoveryCodeAsync(new RecoveryCodeLoginRequest("abcd-efgh"), CancellationToken.None);
+
+        Xunit.Assert.Equal(LoginResult.InvalidCredentials, outcome.Result);
+        var audit = Xunit.Assert.Single(_audit.Records);
+        Xunit.Assert.Equal(AuditActions.LoginFailed, audit.Action);
+        Xunit.Assert.Equal("recoveryCode", audit.Details!["method"]);
+    }
+
+    [Xunit.Fact]
+    public async Task TwoFactorStep_WithoutCode_IsRejectedWithoutStoreCall()
+    {
+        var outcome = await _logic.LoginWithTwoFactorAsync(new TwoFactorLoginRequest(" ", false), CancellationToken.None);
+
+        Xunit.Assert.Equal(LoginResult.InvalidCredentials, outcome.Result);
+        Xunit.Assert.Empty(_store.SecondFactorCodes);
     }
 }

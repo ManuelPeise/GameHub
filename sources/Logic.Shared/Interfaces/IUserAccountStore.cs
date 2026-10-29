@@ -17,6 +17,21 @@ public interface IUserAccountStore
     /// </summary>
     Task<LoginOutcome> PasswordSignInAsync(string email, string password, bool persistent, CancellationToken cancellationToken);
 
+    /// <summary>Second login step with a code of the authenticator app (after <see cref="LoginResult.RequiresTwoFactor"/>).</summary>
+    Task<LoginOutcome> TwoFactorSignInAsync(string code, bool persistent, CancellationToken cancellationToken);
+
+    /// <summary>Second login step with one of the recovery codes (each code works once).</summary>
+    Task<LoginOutcome> RecoveryCodeSignInAsync(string recoveryCode, CancellationToken cancellationToken);
+
+    /// <summary>Key and otpauth URI for the authenticator app; creates a key if the user has none.</summary>
+    Task<TwoFactorSetup?> GetTwoFactorSetupAsync(Guid userId, CancellationToken cancellationToken);
+
+    /// <summary>
+    /// Enables two-factor authentication if the code is valid, renews the sign-in as two-factor
+    /// sign-in and returns new recovery codes; null if the code is invalid.
+    /// </summary>
+    Task<IReadOnlyList<string>?> EnableTwoFactorAsync(Guid userId, string code, CancellationToken cancellationToken);
+
     /// <summary>Removes the authentication cookie.</summary>
     Task SignOutAsync(CancellationToken cancellationToken);
 

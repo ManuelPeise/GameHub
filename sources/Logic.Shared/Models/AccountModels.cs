@@ -33,13 +33,19 @@ public enum LoginResult
 
     /// <summary>Password correct, but the account was locked by an administrator.</summary>
     AccountDisabled,
+
+    /// <summary>Password correct; the second factor (authenticator code) is still required.</summary>
+    RequiresTwoFactor,
 }
 
 /// <summary>Login result; UserId is set when the account is known.</summary>
 public sealed record LoginOutcome(LoginResult Result, Guid? UserId);
 
 /// <summary>Account data for the signed-in user.</summary>
-public sealed record AccountInfo(Guid Id, string Email, string DisplayName, IReadOnlyList<string> Roles);
+public sealed record AccountInfo(Guid Id, string Email, string DisplayName, IReadOnlyList<string> Roles, bool TwoFactorEnabled);
+
+/// <summary>Data to set up an authenticator app (TOTP).</summary>
+public sealed record TwoFactorSetup(bool Enabled, string SharedKey, string AuthenticatorUri);
 
 /// <summary>A token for a link in an e-mail, with the data needed for the mail.</summary>
 public sealed record AccountToken(Guid UserId, string Email, string DisplayName, string Token);

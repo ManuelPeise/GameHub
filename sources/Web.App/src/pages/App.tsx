@@ -5,6 +5,7 @@ import ForgotPasswordPage from "./account/ForgotPasswordPage";
 import LoginPage from "./account/LoginPage";
 import RegisterPage from "./account/RegisterPage";
 import ResetPasswordPage from "./account/ResetPasswordPage";
+import AdminPage from "./admin/AdminPage";
 import HomePage from "./HomePage";
 
 /** Minimal path-based page selection until routing and layout arrive. */
@@ -20,6 +21,8 @@ const App: React.FC = () => {
       return <ResetPasswordPage />;
     case pagePaths.emailConfirmed:
       return <EmailConfirmedPage />;
+    case pagePaths.admin:
+      return <AdminPage />;
     default:
       return <HomePage />;
   }

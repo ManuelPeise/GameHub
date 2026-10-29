@@ -112,6 +112,12 @@ public sealed class EnvironmentSettings
     /// </summary>
     public string? PublicBaseUrl { get; set; }
 
+    /// <summary>
+    /// Password of the seeded development accounts (Development only, set by Aspire from the user
+    /// secrets of Services.AppHost). Never set in Testing or Live.
+    /// </summary>
+    public string? SeedPassword { get; set; }
+
     /// <summary>Shows the environment banner in the UI (always off in Live).</summary>
     public bool ShowBanner { get; set; } = true;
 

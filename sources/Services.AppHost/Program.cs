@@ -15,9 +15,19 @@ var database = postgres.AddDatabase("gamehub");
 // Catches all outgoing mails in development (web UI in the dashboard).
 var mailpit = builder.AddMailPit("mailpit");
 
-// Applies pending EF Core migrations once, before the API starts (never at API start, see CLAUDE.md).
+// Password of the development accounts (admin@gamehub.local, spieler1/2@gamehub.local). Generated once
+// and kept in the user secrets of this project; shown under "Parameters" in the dashboard.
+var seedPassword = builder.AddParameter(
+    "seed-password",
+    new GenerateParameterDefault { MinLength = 16, Special = false, MinLower = 1, MinUpper = 1, MinNumeric = 1 },
+    secret: true,
+    persist: true);
+
+// Applies pending EF Core migrations once, before the API starts (never at API start, see CLAUDE.md),
+// then creates the development accounts if they are missing.
 var migrate = builder.AddProject<Projects.Services_DbTools>("migrate")
-    .WithArgs("migrate")
+    .WithArgs("migrate", "--seed-development")
+    .WithEnvironment("App__Environment__SeedPassword", seedPassword)
     .WithReference(database)
     .WaitFor(database);
 

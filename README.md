@@ -39,6 +39,29 @@ Das Aspire-Dashboard öffnet sich im Browser. Dort sind alle Ressourcen mit Logs
 Verbindungsdaten und das Datenbank-Passwort setzt Aspire automatisch; das Passwort liegt in den
 User Secrets von `Services.AppHost`, nicht im Repository.
 
+## Entwicklungskonten
+
+Beim Start legt die Ressource `migrate` in Development drei bestätigte Konten an, falls sie fehlen:
+
+| Konto | Rolle |
+| --- | --- |
+| `admin@gamehub.local` | Administrator (und Spieler) |
+| `spieler1@gamehub.local` | Spieler |
+| `spieler2@gamehub.local` | Spieler |
+
+Das gemeinsame Passwort erzeugt Aspire einmalig und speichert es in den User Secrets von
+`Services.AppHost`; im Dashboard unter „Parameter“ (`seed-password`) einsehbar. Für den Admin-Bereich
+ist bei der ersten Anmeldung die Einrichtung einer Authenticator-App nötig.
+
+## Ersten Administrator anlegen (Testing, Live)
+
+```
+dotnet run --project Services.DbTools -- create-admin admin@example.org "Anzeigename"
+```
+
+Das Passwort kommt aus der Umgebungsvariable `GAMEHUB_ADMIN_PASSWORD` oder wird erzeugt und einmalig
+ausgegeben. Die Verbindung zur Datenbank kommt aus `ConnectionStrings__gamehub`.
+
 ## Datenbank zurücksetzen
 
 Die Daten liegen im Docker-Volume `gamehub-postgres-data` und bleiben zwischen den Starts erhalten.

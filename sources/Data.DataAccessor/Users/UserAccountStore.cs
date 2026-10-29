@@ -1,3 +1,4 @@
+using System.Security.Claims;
 using Data.Database.Entities;
 using Logic.Shared.Interfaces;
 using Logic.Shared.Models;
@@ -109,6 +110,12 @@ internal sealed class UserAccountStore(
             return new LoginOutcome(LoginResult.Succeeded, user.Id);
         }
 
+        if (result.RequiresTwoFactor)
+        {
+            // Identity has stored the user in the two-factor cookie; the code follows with TwoFactorSignInAsync.
+            return new LoginOutcome(LoginResult.RequiresTwoFactor, user.Id);
+        }
+
         if (result.IsLockedOut)
         {
             return new LoginOutcome(LoginResult.LockedOut, user.Id);
@@ -123,6 +130,80 @@ internal sealed class UserAccountStore(
         return new LoginOutcome(LoginResult.InvalidCredentials, user.Id);
     }
 
+    public async Task<LoginOutcome> TwoFactorSignInAsync(string code, bool persistent, CancellationToken cancellationToken)
+    {
+        var user = await signInManager.GetTwoFactorAuthenticationUserAsync();
+        if (user is null)
+        {
+            // No (or an expired) first login step.
+            return new LoginOutcome(LoginResult.InvalidCredentials, null);
+        }
+
+        var result = await signInManager.TwoFactorAuthenticatorSignInAsync(NormalizeCode(code), persistent, rememberClient: false);
+        return await CompleteSecondFactorAsync(user, result);
+    }
+
+    public async Task<LoginOutcome> RecoveryCodeSignInAsync(string recoveryCode, CancellationToken cancellationToken)
+    {
+        var user = await signInManager.GetTwoFactorAuthenticationUserAsync();
+        if (user is null)
+        {
+            return new LoginOutcome(LoginResult.InvalidCredentials, null);
+        }
+
+        var result = await signInManager.TwoFactorRecoveryCodeSignInAsync(NormalizeCode(recoveryCode));
+        return await CompleteSecondFactorAsync(user, result);
+    }
+
+    public async Task<TwoFactorSetup?> GetTwoFactorSetupAsync(Guid userId, CancellationToken cancellationToken)
+    {
+        var user = await userManager.FindByIdAsync(userId.ToString());
+        if (user is null || user.Status != UserStatus.Active)
+        {
+            return null;
+        }
+
+        var key = await userManager.GetAuthenticatorKeyAsync(user);
+        if (string.IsNullOrEmpty(key))
+        {
+            await userManager.ResetAuthenticatorKeyAsync(user);
+            key = await userManager.GetAuthenticatorKeyAsync(user) ?? string.Empty;
+        }
+
+        const string issuer = "GameHub";
+        var uri = $"otpauth://totp/{Uri.EscapeDataString(issuer)}:{Uri.EscapeDataString(user.Email ?? string.Empty)}"
+            + $"?secret={key}&issuer={Uri.EscapeDataString(issuer)}&digits=6";
+
+        return new TwoFactorSetup(user.TwoFactorEnabled, key, uri);
+    }
+
+    public async Task<IReadOnlyList<string>?> EnableTwoFactorAsync(Guid userId, string code, CancellationToken cancellationToken)
+    {
+        var user = await userManager.FindByIdAsync(userId.ToString());
+        if (user is null || user.Status != UserStatus.Active)
+        {
+            return null;
+        }
+
+        var valid = await userManager.VerifyTwoFactorTokenAsync(
+            user,
+            userManager.Options.Tokens.AuthenticatorTokenProvider,
+            NormalizeCode(code));
+        if (!valid)
+        {
+            return null;
+        }
+
+        await userManager.SetTwoFactorEnabledAsync(user, true);
+        var recoveryCodes = await userManager.GenerateNewTwoFactorRecoveryCodesAsync(user, 10);
+
+        // The current cookie is a password-only sign-in; renew it as two-factor sign-in ("amr" = "mfa"),
+        // so administrators can use the admin area right away.
+        await signInManager.SignInWithClaimsAsync(user, isPersistent: false, [new Claim("amr", "mfa")]);
+
+        return [.. recoveryCodes ?? []];
+    }
+
     public Task SignOutAsync(CancellationToken cancellationToken) => signInManager.SignOutAsync();
 
     public async Task<AccountInfo?> FindAsync(Guid userId, CancellationToken cancellationToken)
@@ -134,7 +215,7 @@ internal sealed class UserAccountStore(
         }
 
         var roles = await userManager.GetRolesAsync(user);
-        return new AccountInfo(user.Id, user.Email ?? string.Empty, user.DisplayName, [.. roles]);
+        return new AccountInfo(user.Id, user.Email ?? string.Empty, user.DisplayName, [.. roles], user.TwoFactorEnabled);
     }
 
     public async Task<AccountToken?> CreatePasswordResetTokenAsync(string email, CancellationToken cancellationToken)
@@ -189,6 +270,24 @@ internal sealed class UserAccountStore(
         var token = await userManager.GenerateEmailConfirmationTokenAsync(user);
         return new AccountToken(user.Id, user.Email ?? email, user.DisplayName, token);
     }
+
+    private async Task<LoginOutcome> CompleteSecondFactorAsync(User user, SignInResult result)
+    {
+        if (result.Succeeded)
+        {
+            user.LastLoginAt = timeProvider.GetUtcNow();
+            await userManager.UpdateAsync(user);
+            return new LoginOutcome(LoginResult.Succeeded, user.Id);
+        }
+
+        return result.IsLockedOut
+            ? new LoginOutcome(LoginResult.LockedOut, user.Id)
+            : new LoginOutcome(LoginResult.InvalidCredentials, user.Id);
+    }
+
+    /// <summary>Codes are often typed with spaces or dashes ("123 456", "ab12-cd34").</summary>
+    private static string NormalizeCode(string? code) =>
+        (code ?? string.Empty).Replace(" ", string.Empty, StringComparison.Ordinal).Replace("-", string.Empty, StringComparison.Ordinal);
 
     /// <summary>Identity messages in the language of the UI.</summary>
     private static string Translate(IdentityError error) => error.Code switch

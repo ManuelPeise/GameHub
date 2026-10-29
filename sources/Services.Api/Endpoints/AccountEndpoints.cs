@@ -1,6 +1,7 @@
 using System.Security.Claims;
 using Logic.Shared.Models;
 using Logic.Users;
+using Services.Api.Authorization;
 using Shared.Models.Account;
 using Shared.Models.Interfaces;
 
@@ -34,7 +35,14 @@ public static class AccountEndpoints
 
         account.MapPost("/login", LoginAsync).RequireRateLimiting(LoginRateLimitPolicy);
         account.MapPost("/logout", LogoutAsync);
-        account.MapGet("/me", GetCurrentUserAsync).RequireAuthorization();
+        account.MapPost("/login-2fa", LoginWithTwoFactorAsync).RequireRateLimiting(LoginRateLimitPolicy);
+        account.MapPost("/login-recovery", LoginWithRecoveryCodeAsync).RequireRateLimiting(LoginRateLimitPolicy);
+        account.MapGet("/me", GetCurrentUserAsync).RequireAuthorization(AuthorizationPolicies.Player);
+
+        account.MapGet("/two-factor", GetTwoFactorSetupAsync).RequireAuthorization(AuthorizationPolicies.Player);
+        account.MapPost("/two-factor/enable", EnableTwoFactorAsync)
+            .RequireAuthorization(AuthorizationPolicies.Player)
+            .RequireRateLimiting(LoginRateLimitPolicy);
 
         account.MapPost("/forgot-password", ForgotPasswordAsync).RequireRateLimiting(LoginRateLimitPolicy);
         account.MapPost("/reset-password", ResetPasswordAsync).RequireRateLimiting(LoginRateLimitPolicy);
@@ -77,10 +85,27 @@ public static class AccountEndpoints
     private static async Task<IResult> LoginAsync(
         LoginRequest request,
         LoginLogic login,
+        CancellationToken cancellationToken) =>
+        await ToLoginResultAsync(await login.LoginAsync(request, cancellationToken), login, isSecondStep: false, cancellationToken);
+
+    private static async Task<IResult> LoginWithTwoFactorAsync(
+        TwoFactorLoginRequest request,
+        LoginLogic login,
+        CancellationToken cancellationToken) =>
+        await ToLoginResultAsync(await login.LoginWithTwoFactorAsync(request, cancellationToken), login, isSecondStep: true, cancellationToken);
+
+    private static async Task<IResult> LoginWithRecoveryCodeAsync(
+        RecoveryCodeLoginRequest request,
+        LoginLogic login,
+        CancellationToken cancellationToken) =>
+        await ToLoginResultAsync(await login.LoginWithRecoveryCodeAsync(request, cancellationToken), login, isSecondStep: true, cancellationToken);
+
+    private static async Task<IResult> ToLoginResultAsync(
+        LoginOutcome outcome,
+        LoginLogic login,
+        bool isSecondStep,
         CancellationToken cancellationToken)
     {
-        var outcome = await login.LoginAsync(request, cancellationToken);
-
         if (outcome.Result == LoginResult.Succeeded && outcome.UserId is { } userId)
         {
             var user = await login.GetCurrentUserAsync(userId, cancellationToken);
@@ -89,6 +114,10 @@ public static class AccountEndpoints
 
         var (code, message) = outcome.Result switch
         {
+            LoginResult.RequiresTwoFactor => (LoginErrorCodes.TwoFactorRequired,
+                "Bitte gib den Code aus deiner Authenticator-App ein."),
+            LoginResult.InvalidCredentials when isSecondStep => (LoginErrorCodes.InvalidTwoFactorCode,
+                "Der Code ist ungültig oder abgelaufen. Bitte melde dich bei Bedarf erneut an."),
             LoginResult.LockedOut => (LoginErrorCodes.LockedOut,
                 "Zu viele fehlgeschlagene Versuche. Dein Konto ist vorübergehend gesperrt, bitte versuche es später erneut."),
             LoginResult.EmailNotConfirmed => (LoginErrorCodes.EmailNotConfirmed,
@@ -123,6 +152,41 @@ public static class AccountEndpoints
 
         // A cookie of a meanwhile locked or deleted account is treated as signed out.
         return user is null ? Results.Unauthorized() : Results.Ok(ToResponse(user));
+    }
+
+    private static async Task<IResult> GetTwoFactorSetupAsync(
+        TwoFactorLogic twoFactor,
+        ClaimsPrincipal principal,
+        CancellationToken cancellationToken)
+    {
+        var userId = GetUserId(principal);
+        var setup = userId is null ? null : await twoFactor.GetSetupAsync(userId.Value, cancellationToken);
+
+        return setup is null
+            ? Results.Unauthorized()
+            : Results.Ok(new TwoFactorSetupResponse(setup.Enabled, setup.SharedKey, setup.AuthenticatorUri));
+    }
+
+    private static async Task<IResult> EnableTwoFactorAsync(
+        EnableTwoFactorRequest request,
+        TwoFactorLogic twoFactor,
+        ClaimsPrincipal principal,
+        CancellationToken cancellationToken)
+    {
+        var userId = GetUserId(principal);
+        if (userId is null)
+        {
+            return Results.Unauthorized();
+        }
+
+        var recoveryCodes = await twoFactor.EnableAsync(userId.Value, request.Code, cancellationToken);
+
+        return recoveryCodes is null
+            ? Results.ValidationProblem(new Dictionary<string, string[]>
+            {
+                ["code"] = ["Der Code ist ungültig. Bitte gib den aktuellen Code aus der Authenticator-App ein."],
+            })
+            : Results.Ok(new RecoveryCodesResponse(recoveryCodes));
     }
 
     private static async Task<IResult> ForgotPasswordAsync(
@@ -168,7 +232,7 @@ public static class AccountEndpoints
     }
 
     private static CurrentUserResponse ToResponse(AccountInfo user) =>
-        new(user.Id, user.Email, user.DisplayName, user.Roles);
+        new(user.Id, user.Email, user.DisplayName, user.Roles, user.TwoFactorEnabled);
 
     private static Guid? GetUserId(ClaimsPrincipal principal) =>
         Guid.TryParse(principal.FindFirstValue(ClaimTypes.NameIdentifier), out var userId) ? userId : null;

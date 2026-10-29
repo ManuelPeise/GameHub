@@ -4,6 +4,7 @@ using Data.DataAccessor.Logging;
 using Data.DataAccessor.Users;
 using Logic.Users;
 using Microsoft.AspNetCore.RateLimiting;
+using Services.Api.Authorization;
 using Services.Api.Endpoints;
 using Services.ServiceDefaults;
 using Shared.Models.Interfaces;
@@ -21,12 +22,13 @@ builder.AddGameDatabase();
 builder.AddDatabaseLogging();
 builder.AddUserAccounts(appSettings);
 
-builder.Services.AddAuthorization();
+builder.Services.AddAuthorization(options => AuthorizationPolicies.Configure(options, appSettings));
 
 builder.Services.AddScoped<AccountMailer>();
 builder.Services.AddScoped<RegistrationLogic>();
 builder.Services.AddScoped<LoginLogic>();
 builder.Services.AddScoped<AccountRecoveryLogic>();
+builder.Services.AddScoped<TwoFactorLogic>();
 
 builder.Services.AddRateLimiter(options =>
 {
@@ -60,6 +62,7 @@ app.UseAuthorization();
 
 app.MapDefaultEndpoints();
 app.MapAccountEndpoints();
+app.MapAdminEndpoints();
 
 // Reachable from Web.App through the Vite proxy as /api/info.
 app.MapGet("/api/info", (IAppSettings settings) => Results.Ok(new
