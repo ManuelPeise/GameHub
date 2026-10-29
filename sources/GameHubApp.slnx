@@ -1,1 +1,11 @@
-<Solution />
+<Solution>
+  <Folder Name="/01 Core/" />
+  <Folder Name="/02 Services/" />
+  <Folder Name="/03 Logic/" />
+  <Folder Name="/04 Data/" />
+  <Folder Name="/05 Shared/">
+    <Project Path="Shared.Models/Shared.Models.csproj" Id="0451db2c-c3b9-4860-8f18-f418365df473" />
+  </Folder>
+  <Folder Name="/06 Tests/" />
+  <Folder Name="/07 Documentations/" />
+</Solution>
