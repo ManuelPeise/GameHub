@@ -21,9 +21,8 @@ public sealed class RegistrationLogicTests
         _logic = new RegistrationLogic(
             new AppSettings(new ConfigurationBuilder().Build()),
             _store,
-            _mail,
-            _audit,
-            NullLogger<RegistrationLogic>.Instance);
+            new AccountMailer(_mail, _audit, NullLogger<AccountMailer>.Instance),
+            _audit);
     }
 
     private static RegisterRequest ValidRequest() => new("max@example.org", "Max", "Geheim12345");
@@ -59,7 +58,7 @@ public sealed class RegistrationLogicTests
 
         var mail = Xunit.Assert.Single(_mail.Sent);
         Xunit.Assert.Equal("max@example.org", mail.To);
-        Xunit.Assert.DoesNotContain(RegistrationLogic.ConfirmEmailPath, mail.TextBody, StringComparison.Ordinal);
+        Xunit.Assert.DoesNotContain(AccountMailer.ConfirmEmailPath, mail.TextBody, StringComparison.Ordinal);
 
         var audit = Xunit.Assert.Single(_audit.Records);
         Xunit.Assert.Equal(AuditActions.RegistrationWithExistingEmail, audit.Action);
@@ -123,7 +122,7 @@ public sealed class RegistrationLogicTests
         var outcome = await _logic.RegisterAsync(ValidRequest(), BaseUrl, CancellationToken.None);
 
         Xunit.Assert.IsType<RegistrationOutcome.Accepted>(outcome);
-        Xunit.Assert.Contains(_audit.Records, record => record.Action == AuditActions.ConfirmationEmailFailed);
+        Xunit.Assert.Contains(_audit.Records, record => record.Action == AuditActions.EmailFailed);
         Xunit.Assert.Contains(_audit.Records, record => record.Action == AuditActions.Registered);
     }
 

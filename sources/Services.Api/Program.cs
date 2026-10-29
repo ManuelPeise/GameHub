@@ -19,29 +19,44 @@ builder.Services.AddSingleton<IAppSettings>(appSettings);
 
 builder.AddGameDatabase();
 builder.AddDatabaseLogging();
-builder.AddUserAccounts();
+builder.AddUserAccounts(appSettings);
 
+builder.Services.AddAuthorization();
+
+builder.Services.AddScoped<AccountMailer>();
 builder.Services.AddScoped<RegistrationLogic>();
+builder.Services.AddScoped<LoginLogic>();
+builder.Services.AddScoped<AccountRecoveryLogic>();
 
 builder.Services.AddRateLimiter(options =>
 {
     options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
 
-    // Registrations per client IP and hour (App:Security:RegistrationRateLimit).
-    // Behind a reverse proxy the client IP needs forwarded headers (US-029).
+    // Per client IP. Behind a reverse proxy the client IP needs forwarded headers (US-029).
     options.AddPolicy(AccountEndpoints.RegistrationRateLimitPolicy, httpContext =>
         RateLimitPartition.GetFixedWindowLimiter(
-            httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+            ClientKey(httpContext),
             _ => new FixedWindowRateLimiterOptions
             {
                 PermitLimit = appSettings.Security.RegistrationRateLimit,
                 Window = TimeSpan.FromHours(1),
+            }));
+
+    options.AddPolicy(AccountEndpoints.LoginRateLimitPolicy, httpContext =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            ClientKey(httpContext),
+            _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = appSettings.Security.LoginRateLimit,
+                Window = TimeSpan.FromMinutes(1),
             }));
 });
 
 var app = builder.Build();
 
 app.UseRateLimiter();
+app.UseAuthentication();
+app.UseAuthorization();
 
 app.MapDefaultEndpoints();
 app.MapAccountEndpoints();
@@ -54,3 +69,5 @@ app.MapGet("/api/info", (IAppSettings settings) => Results.Ok(new
 }));
 
 app.Run();
+
+static string ClientKey(HttpContext httpContext) => httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown";

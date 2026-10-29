@@ -85,6 +85,15 @@ public sealed class SecuritySettings
 
     /// <summary>Login attempts per client IP and minute.</summary>
     public int LoginRateLimit { get; set; } = 10;
+
+    /// <summary>Failed password attempts after which an account is locked temporarily.</summary>
+    public int LockoutMaxFailedAttempts { get; set; } = 5;
+
+    /// <summary>Duration of the temporary lock after too many failed attempts.</summary>
+    public TimeSpan LockoutDuration { get; set; } = TimeSpan.FromMinutes(15);
+
+    /// <summary>Validity of links in e-mails (confirm address, reset password).</summary>
+    public TimeSpan AccountTokenLifetime { get; set; } = TimeSpan.FromHours(24);
 }
 
 /// <summary>Environment information (section App:Environment).</summary>

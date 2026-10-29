@@ -1,4 +1,5 @@
 import React from "react";
+import { pagePaths } from "../../api/account";
 import "./AccountPages.css";
 
 /** Target of the confirmation link (via /api/account/confirm-email): shows the result. */
@@ -17,6 +18,9 @@ const EmailConfirmedPage: React.FC = () => {
           Der Bestätigungslink ist ungültig oder abgelaufen.
         </p>
       )}
+      <p className="account-links">
+        <a href={pagePaths.login}>Zur Anmeldung</a>
+      </p>
     </main>
   );
 };

@@ -17,6 +17,49 @@ public abstract record CreateAccountResult
     public sealed record InvalidPassword(IReadOnlyList<string> Errors) : CreateAccountResult;
 }
 
+/// <summary>Result of a password login.</summary>
+public enum LoginResult
+{
+    Succeeded,
+
+    /// <summary>Unknown address or wrong password (not distinguished, so addresses are not revealed).</summary>
+    InvalidCredentials,
+
+    /// <summary>Temporarily locked after too many failed attempts.</summary>
+    LockedOut,
+
+    /// <summary>Password correct, but the e-mail address is not confirmed yet.</summary>
+    EmailNotConfirmed,
+
+    /// <summary>Password correct, but the account was locked by an administrator.</summary>
+    AccountDisabled,
+}
+
+/// <summary>Login result; UserId is set when the account is known.</summary>
+public sealed record LoginOutcome(LoginResult Result, Guid? UserId);
+
+/// <summary>Account data for the signed-in user.</summary>
+public sealed record AccountInfo(Guid Id, string Email, string DisplayName, IReadOnlyList<string> Roles);
+
+/// <summary>A token for a link in an e-mail, with the data needed for the mail.</summary>
+public sealed record AccountToken(Guid UserId, string Email, string DisplayName, string Token);
+
+/// <summary>Outcome of resetting a password.</summary>
+public abstract record ResetPasswordResult
+{
+    private ResetPasswordResult()
+    {
+    }
+
+    public sealed record Succeeded : ResetPasswordResult;
+
+    /// <summary>Unknown user, invalid or expired token.</summary>
+    public sealed record InvalidToken : ResetPasswordResult;
+
+    /// <summary>The new password does not meet the rules; messages in the language of the UI.</summary>
+    public sealed record InvalidPassword(IReadOnlyList<string> Errors) : ResetPasswordResult;
+}
+
 /// <summary>An e-mail to send.</summary>
 public sealed record EmailMessage(string To, string Subject, string TextBody, string HtmlBody);
 

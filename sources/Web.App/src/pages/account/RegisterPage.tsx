@@ -3,6 +3,7 @@ import { ApiError, getValidationErrors, sendRequest } from "../../hooks/apiClien
 import { useStatefulApi } from "../../hooks/useStatefulApi";
 import {
   accountUrls,
+  pagePaths,
   type PasswordRulesResponse,
   type RegisterRequest,
   type RegisterResponse,
@@ -68,6 +69,9 @@ const RegisterPage: React.FC = () => {
         <h1>Registrierung</h1>
         <p className="account-success" role="status">
           {successMessage}
+        </p>
+        <p className="account-links">
+          <a href={pagePaths.login}>Zur Anmeldung</a>
         </p>
       </main>
     );
@@ -144,6 +148,9 @@ const RegisterPage: React.FC = () => {
           {isSubmitting ? "Wird gesendet …" : "Konto anlegen"}
         </button>
       </form>
+      <p className="account-links">
+        <a href={pagePaths.login}>Ich habe schon ein Konto</a>
+      </p>
     </main>
   );
 };

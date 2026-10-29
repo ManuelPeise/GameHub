@@ -1,16 +1,27 @@
 import React from "react";
+import { pagePaths } from "../api/account";
 import EmailConfirmedPage from "./account/EmailConfirmedPage";
+import ForgotPasswordPage from "./account/ForgotPasswordPage";
+import LoginPage from "./account/LoginPage";
 import RegisterPage from "./account/RegisterPage";
+import ResetPasswordPage from "./account/ResetPasswordPage";
+import HomePage from "./HomePage";
 
-/**
- * Minimal path-based page selection until routing, layout and login arrive (US-006 and later).
- */
+/** Minimal path-based page selection until routing and layout arrive. */
 const App: React.FC = () => {
   switch (window.location.pathname) {
-    case "/email-confirmed":
+    case pagePaths.login:
+      return <LoginPage />;
+    case pagePaths.register:
+      return <RegisterPage />;
+    case pagePaths.forgotPassword:
+      return <ForgotPasswordPage />;
+    case pagePaths.resetPassword:
+      return <ResetPasswordPage />;
+    case pagePaths.emailConfirmed:
       return <EmailConfirmedPage />;
     default:
-      return <RegisterPage />;
+      return <HomePage />;
   }
 };
 

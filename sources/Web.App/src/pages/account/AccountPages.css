@@ -1,4 +1,18 @@
+/*
+  Own colour tokens with fallbacks: the page must work whether or not index.css (global theme)
+  is loaded. Global variables win when they exist.
+*/
 .account-page {
+  --account-accent: var(--accent, #7c3aed);
+  --account-accent-bg: var(--accent-bg, rgba(124, 58, 237, 0.1));
+  --account-accent-border: var(--accent-border, rgba(124, 58, 237, 0.5));
+  --account-border: var(--border, #c9c7cf);
+  --account-bg: var(--bg, #fff);
+  --account-text: var(--text-h, #111);
+  --account-error: #c62828;
+
+  font-family: system-ui, "Segoe UI", Roboto, sans-serif;
+  color: var(--account-text);
   max-width: 28rem;
   margin: 3rem auto;
   padding: 0 1rem;
@@ -20,18 +34,18 @@
 .account-field input {
   font: inherit;
   padding: 0.5rem 0.75rem;
-  border: 1px solid var(--border);
+  border: 1px solid var(--account-border);
   border-radius: 6px;
-  background: var(--bg);
-  color: var(--text-h);
+  background: var(--account-bg);
+  color: var(--account-text);
 }
 
 .account-field input[aria-invalid="true"] {
-  border-color: #d33;
+  border-color: var(--account-error);
 }
 
 .account-error {
-  color: #d33;
+  color: var(--account-error);
   font-size: 0.9em;
   margin: 0;
 }
@@ -47,7 +61,7 @@
   padding: 0.6rem 1rem;
   border: none;
   border-radius: 6px;
-  background: var(--accent);
+  background: var(--account-accent);
   color: #fff;
   cursor: pointer;
 }
@@ -59,7 +73,27 @@
 
 .account-success {
   padding: 1rem;
-  border: 1px solid var(--accent-border);
+  border: 1px solid var(--account-accent-border);
   border-radius: 6px;
-  background: var(--accent-bg);
+  background: var(--account-accent-bg);
+}
+
+.account-check {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.account-links {
+  display: flex;
+  gap: 1.5rem;
+  margin-top: 1.5rem;
+}
+
+.account-form .account-link-button {
+  background: none;
+  color: var(--account-accent);
+  padding: 0;
+  text-align: left;
+  text-decoration: underline;
 }
