@@ -48,5 +48,8 @@ public sealed class GameSession
     /// </summary>
     public DateTimeOffset? TurnStartedAt { get; set; }
 
+    /// <summary>Session this one was started from with "Neue Runde"; at most one new round per session.</summary>
+    public Guid? PreviousSessionId { get; set; }
+
     public List<Seat> Seats { get; set; } = [];
 }

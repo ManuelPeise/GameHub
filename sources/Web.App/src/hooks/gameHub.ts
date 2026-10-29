@@ -6,6 +6,7 @@ import {
   GameHubRoutes,
   type ActionAppliedMessage,
   type AiThinkingMessage,
+  type RematchCreatedMessage,
   type SessionUpdatedMessage,
 } from "../api/generated/contracts";
 
@@ -14,6 +15,7 @@ export type GameSessionHandlers = {
   onActionApplied?: (message: ActionAppliedMessage) => void;
   onAiThinking?: (message: AiThinkingMessage) => void;
   onSessionUpdated?: (message: SessionUpdatedMessage) => void;
+  onRematchCreated?: (message: RematchCreatedMessage) => void;
   /** Called after a lost connection was re-established; reload the state, events may have been missed. */
   onReconnected?: () => void;
 };
@@ -145,11 +147,13 @@ export const useGameSessionEvents = (sessionId: string | null | undefined, handl
     const onActionApplied = forSession<ActionAppliedMessage>((m) => handlersRef.current.onActionApplied?.(m));
     const onAiThinking = forSession<AiThinkingMessage>((m) => handlersRef.current.onAiThinking?.(m));
     const onSessionUpdated = forSession<SessionUpdatedMessage>((m) => handlersRef.current.onSessionUpdated?.(m));
+    const onRematchCreated = forSession<RematchCreatedMessage>((m) => handlersRef.current.onRematchCreated?.(m));
     const onReconnected = () => handlersRef.current.onReconnected?.();
 
     hub.on(GameHubEvents.ActionApplied, onActionApplied);
     hub.on(GameHubEvents.AiThinking, onAiThinking);
     hub.on(GameHubEvents.SessionUpdated, onSessionUpdated);
+    hub.on(GameHubEvents.RematchCreated, onRematchCreated);
     reconnectListeners.add(onReconnected);
 
     joinSession(sessionId)
@@ -170,6 +174,7 @@ export const useGameSessionEvents = (sessionId: string | null | undefined, handl
       hub.off(GameHubEvents.ActionApplied, onActionApplied);
       hub.off(GameHubEvents.AiThinking, onAiThinking);
       hub.off(GameHubEvents.SessionUpdated, onSessionUpdated);
+      hub.off(GameHubEvents.RematchCreated, onRematchCreated);
       void leaveSession(sessionId);
     };
   }, [sessionId]);

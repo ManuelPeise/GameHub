@@ -209,6 +209,9 @@ namespace Data.Database.Migrations
                     b.Property<Guid>("OwnerUserId")
                         .HasColumnType("uuid");
 
+                    b.Property<Guid?>("PreviousSessionId")
+                        .HasColumnType("uuid");
+
                     b.Property<long>("RngSeed")
                         .HasColumnType("bigint");
 
@@ -237,6 +240,10 @@ namespace Data.Database.Migrations
                         .IsUnique()
                         .HasDatabaseName("IX_GameSession_InviteCode")
                         .HasFilter("\"InviteCode\" IS NOT NULL");
+
+                    b.HasIndex("PreviousSessionId")
+                        .IsUnique()
+                        .HasFilter("\"PreviousSessionId\" IS NOT NULL");
 
                     b.HasIndex("OwnerUserId", "GameType")
                         .IsUnique()

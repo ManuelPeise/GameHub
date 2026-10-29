@@ -117,6 +117,7 @@ export const GameHubEvents = {
   ActionApplied: "ActionApplied",
   AiThinking: "AiThinking",
   SessionUpdated: "SessionUpdated",
+  RematchCreated: "RematchCreated",
 } as const;
 
 export const GameHubMethods = {
@@ -141,6 +142,11 @@ export type ActionAppliedMessage = {
 export type AiThinkingMessage = {
   sessionId: string;
   seatId: string;
+};
+
+export type RematchCreatedMessage = {
+  sessionId: string;
+  newSessionId: string;
 };
 
 export type SessionUpdatedMessage = {

@@ -14,6 +14,9 @@ public interface IGameSessionRepository
 
     Task<bool> CreateSessionAsync(SessionCreateWrite write, CancellationToken cancellationToken);
 
+    /// <summary>The new round started from the given session ("Neue Runde"), if any.</summary>
+    Task<SessionSnapshot?> FindRematchAsync(Guid previousSessionId, CancellationToken cancellationToken);
+
     Task<bool> AddSeatAsync(SeatAddWrite write, CancellationToken cancellationToken);
 
     /// <summary>Removes a lobby seat and moves the following seats up. False on version conflict.</summary>

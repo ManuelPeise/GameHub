@@ -59,7 +59,8 @@ public sealed record SessionCreateWrite(
     int StateVersion,
     long RngSeed,
     DateTimeOffset CreatedAt,
-    IReadOnlyList<SeatCreateWrite> Seats);
+    IReadOnlyList<SeatCreateWrite> Seats,
+    Guid? PreviousSessionId = null);
 
 /// <summary>Optimistic-lock write for adding one seat in a lobby.</summary>
 public sealed record SeatAddWrite(
@@ -167,3 +168,6 @@ public sealed record HistoryRecord(
     DateTimeOffset StartedAt,
     DateTimeOffset EndedAt,
     IReadOnlyList<HistorySeatRecord> Seats);
+
+/// <summary>A new round was started from a finished session.</summary>
+public sealed record RematchCreated(Guid PreviousSessionId, Guid NewSessionId);

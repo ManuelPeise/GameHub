@@ -261,6 +261,14 @@ public sealed class AiTurnRunnerTests
 
         public List<SessionUpdated> SessionUpdatedEvents { get; } = [];
 
+        public List<RematchCreated> RematchEvents { get; } = [];
+
+        public Task PublishRematchCreatedAsync(RematchCreated gameEvent, CancellationToken cancellationToken)
+        {
+            RematchEvents.Add(gameEvent);
+            return Task.CompletedTask;
+        }
+
         public Task PublishSessionUpdatedAsync(SessionUpdated gameEvent, CancellationToken cancellationToken)
         {
             SessionUpdatedEvents.Add(gameEvent);

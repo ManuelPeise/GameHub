@@ -29,6 +29,12 @@ public sealed class SignalRGameEventPublisher(IHubContext<GameSessionHub> hub) :
             new AiThinkingMessage(gameEvent.SessionId, gameEvent.SeatId),
             cancellationToken);
 
+    public Task PublishRematchCreatedAsync(RematchCreated gameEvent, CancellationToken cancellationToken) =>
+        hub.Clients.Group(GameSessionHub.GroupName(gameEvent.PreviousSessionId)).SendAsync(
+            GameHubEvents.RematchCreated,
+            new RematchCreatedMessage(gameEvent.PreviousSessionId, gameEvent.NewSessionId),
+            cancellationToken);
+
     public Task PublishSessionUpdatedAsync(SessionUpdated gameEvent, CancellationToken cancellationToken) =>
         hub.Clients.Group(GameSessionHub.GroupName(gameEvent.SessionId)).SendAsync(
             GameHubEvents.SessionUpdated,

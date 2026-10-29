@@ -43,6 +43,15 @@ public sealed class GameSessionRepository(GameDbContext database) : IGameSession
         return session is null ? null : await ToSnapshotAsync(session, cancellationToken).ConfigureAwait(false);
     }
 
+    public async Task<SessionSnapshot?> FindRematchAsync(Guid previousSessionId, CancellationToken cancellationToken)
+    {
+        var session = await database.GameSessions.AsNoTracking()
+            .Include(s => s.Seats)
+            .FirstOrDefaultAsync(s => s.PreviousSessionId == previousSessionId, cancellationToken)
+            .ConfigureAwait(false);
+        return session is null ? null : await ToSnapshotAsync(session, cancellationToken).ConfigureAwait(false);
+    }
+
     public async Task<bool> CreateSessionAsync(SessionCreateWrite write, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(write);
@@ -63,6 +72,7 @@ public sealed class GameSessionRepository(GameDbContext database) : IGameSession
             UpdatedAt = write.CreatedAt,
             LastActivityAt = write.CreatedAt,
             TurnStartedAt = write.Status == SessionStatus.Running ? write.CreatedAt : null,
+            PreviousSessionId = write.PreviousSessionId,
         });
 
         foreach (var seat in write.Seats)

@@ -40,6 +40,11 @@ internal sealed class GameSessionConfiguration : IEntityTypeConfiguration<GameSe
             .IsUnique()
             .HasFilter($"\"Mode\" = '{nameof(GameMode.Singleplayer)}' AND \"Status\" IN ('{nameof(SessionStatus.Running)}', '{nameof(SessionStatus.Paused)}')");
 
+        // "Neue Runde": two players clicking at the same time must end up in the same new session.
+        builder.HasIndex(session => session.PreviousSessionId)
+            .IsUnique()
+            .HasFilter("\"PreviousSessionId\" IS NOT NULL");
+
         builder.HasIndex(session => session.InviteCode)
             .HasDatabaseName(InviteCodeIndex)
             .IsUnique()

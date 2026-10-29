@@ -11,4 +11,7 @@ public interface IGameEventPublisher
 
     /// <summary>Seats or status changed outside of a move (lobby join, AI seat, start).</summary>
     Task PublishSessionUpdatedAsync(SessionUpdated gameEvent, CancellationToken cancellationToken);
+
+    /// <summary>A new round was started from a finished session (sent to the clients of the old session).</summary>
+    Task PublishRematchCreatedAsync(RematchCreated gameEvent, CancellationToken cancellationToken);
 }

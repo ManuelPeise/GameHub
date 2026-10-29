@@ -162,23 +162,74 @@ public sealed class SessionLifecycleLogicTests
         Xunit.Assert.Equal(SessionLifecycleFailureKind.NotFound, joinAfterStart.Kind);
     }
 
-    [Xunit.Fact]
-    public async Task Rematch_CreatesNewSession_KeepingSeatSetup()
+    private async Task<(Guid SessionId, Guid SeatA, Guid SeatB)> StartMultiplayerAsync()
     {
         var created = Xunit.Assert.IsType<SessionLifecycleOutcome.Success>(await _logic.CreateAsync(
             _userA,
             new CreateSessionRequest(GameTypes.TicTacToe, GameMode.Multiplayer, Difficulty: null, PreferredSeat: null),
             CancellationToken.None));
-        await _logic.JoinAsync(_userB, new JoinSessionRequest(created.Session.InviteCode!), CancellationToken.None);
-        var started = Xunit.Assert.IsType<SessionLifecycleOutcome.Success>(
-            await _logic.StartAsync(_userA, created.Session.Id, CancellationToken.None));
+        var joined = Xunit.Assert.IsType<SessionLifecycleOutcome.Success>(
+            await _logic.JoinAsync(_userB, new JoinSessionRequest(created.Session.InviteCode!), CancellationToken.None));
+        Xunit.Assert.IsType<SessionLifecycleOutcome.Success>(await _logic.StartAsync(_userA, created.Session.Id, CancellationToken.None));
+        return (created.Session.Id, created.MySeatId, joined.MySeatId);
+    }
 
-        var rematch = Xunit.Assert.IsType<SessionLifecycleOutcome.Success>(
-            await _logic.RematchAsync(_userA, started.Session.Id, CancellationToken.None));
+    private SubmitActionHandler Handler() =>
+        new(_repository, new GameModuleRegistry([new TicTacToeModule()]), _publisher, TimeProvider.System, _scheduler);
 
-        Xunit.Assert.NotEqual(started.Session.Id, rematch.Session.Id);
-        Xunit.Assert.Equal(started.Session.Seats.Count, rematch.Session.Seats.Count);
-        Xunit.Assert.All(rematch.Session.Seats, seat => Xunit.Assert.Equal(SeatConnectionStatus.Connected, seat.ConnectionStatus));
+    private static Task<SubmitActionResult> Place(SubmitActionHandler handler, Guid sessionId, Guid seat, int cell) =>
+        handler.HandleAsync(new SubmitActionCommand(sessionId, seat, null, PlaceMark.ActionType, $"{{\"cell\":{cell}}}"), CancellationToken.None);
+
+    [Xunit.Fact]
+    public async Task Multiplayer_TwoPlayers_PlayAlternately_AndResultIsStored()
+    {
+        var (sessionId, seatA, seatB) = await StartMultiplayerAsync();
+        var handler = Handler();
+
+        // Only the player at turn can move: A (X) starts.
+        var outOfTurn = Xunit.Assert.IsType<SubmitActionResult.Rejected>(await Place(handler, sessionId, seatB, 0));
+        Xunit.Assert.Equal(SubmitRejection.NotYourTurn, outOfTurn.Kind);
+
+        // X: 0, 1, 2 (top row)   O: 3, 4
+        Xunit.Assert.IsType<SubmitActionResult.Applied>(await Place(handler, sessionId, seatA, 0));
+        Xunit.Assert.IsType<SubmitActionResult.Applied>(await Place(handler, sessionId, seatB, 3));
+        Xunit.Assert.IsType<SubmitActionResult.Applied>(await Place(handler, sessionId, seatA, 1));
+        Xunit.Assert.IsType<SubmitActionResult.Applied>(await Place(handler, sessionId, seatB, 4));
+        var last = Xunit.Assert.IsType<SubmitActionResult.Applied>(await Place(handler, sessionId, seatA, 2));
+
+        Xunit.Assert.True(last.Progress.IsFinished);
+        Xunit.Assert.Equal(SessionStatus.Finished, _repository.Get(sessionId).Status);
+        Xunit.Assert.Contains(new SeatResultWrite(seatA, GameOutcome.Win, 1, null), _repository.Results);
+        Xunit.Assert.Contains(new SeatResultWrite(seatB, GameOutcome.Loss, 2, null), _repository.Results);
+        Xunit.Assert.Equal(5, (await _repository.GetActionsAsync(sessionId, CancellationToken.None)).Count);
+    }
+
+    [Xunit.Fact]
+    public async Task Rematch_OnlyAfterTheEnd_SwapsXAndO_AndBothPlayersLandInTheSameRound()
+    {
+        var (sessionId, seatA, seatB) = await StartMultiplayerAsync();
+
+        var tooEarly = Xunit.Assert.IsType<SessionLifecycleOutcome.Failure>(
+            await _logic.RematchAsync(_userA, sessionId, CancellationToken.None));
+        Xunit.Assert.Equal(SessionLifecycleFailureKind.InvalidState, tooEarly.Kind);
+
+        var handler = Handler();
+        foreach (var (seat, cell) in new[] { (seatA, 0), (seatB, 3), (seatA, 1), (seatB, 4), (seatA, 2) })
+        {
+            await Place(handler, sessionId, seat, cell);
+        }
+
+        var first = Xunit.Assert.IsType<SessionLifecycleOutcome.Success>(await _logic.RematchAsync(_userA, sessionId, CancellationToken.None));
+        var second = Xunit.Assert.IsType<SessionLifecycleOutcome.Success>(await _logic.RematchAsync(_userB, sessionId, CancellationToken.None));
+
+        Xunit.Assert.NotEqual(sessionId, first.Session.Id);
+        Xunit.Assert.Equal(first.Session.Id, second.Session.Id);
+        Xunit.Assert.Equal(SessionStatus.Running, first.Session.Status);
+        var b = first.Session.Seats.Single(seat => seat.UserId == _userB);
+        Xunit.Assert.Equal(0, b.Order); // B played O, now starts as X
+        Xunit.Assert.Equal("X", b.Symbol);
+        Xunit.Assert.Equal(b.Id, first.Session.CurrentSeatId);
+        Xunit.Assert.Single(_publisher.RematchEvents, e => e.PreviousSessionId == sessionId && e.NewSessionId == first.Session.Id);
     }
 
     [Xunit.Fact]

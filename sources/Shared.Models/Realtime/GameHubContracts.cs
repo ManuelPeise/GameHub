@@ -23,6 +23,7 @@ public static class GameHubEvents
     public const string ActionApplied = "ActionApplied";
     public const string AiThinking = "AiThinking";
     public const string SessionUpdated = "SessionUpdated";
+    public const string RematchCreated = "RematchCreated";
 }
 
 /// <summary>A move was stored; contains the action and the new state visible to the receiver.</summary>
@@ -40,3 +41,6 @@ public sealed record AiThinkingMessage(Guid SessionId, Guid SeatId);
 
 /// <summary>Seats or status of a session changed outside of a move (lobby join, AI seat, start).</summary>
 public sealed record SessionUpdatedMessage(Guid SessionId, int StateVersion, SessionStatus Status);
+
+/// <summary>A new round was started from this (finished) session.</summary>
+public sealed record RematchCreatedMessage(Guid SessionId, Guid NewSessionId);

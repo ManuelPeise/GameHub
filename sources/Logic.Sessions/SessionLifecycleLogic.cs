@@ -610,22 +610,44 @@ public sealed class SessionLifecycleLogic(
             return new SessionLifecycleOutcome.Failure(SessionLifecycleFailureKind.Forbidden, "Du bist kein Teilnehmer dieser Partie.");
         }
 
-        if (previous.Status == SessionStatus.Lobby)
+        if (previous.Status is not (SessionStatus.Finished or SessionStatus.Aborted))
         {
             return new SessionLifecycleOutcome.Failure(
                 SessionLifecycleFailureKind.InvalidState,
-                "Eine Lobby kann nicht als Rematch kopiert werden.");
+                "Eine neue Runde ist erst nach dem Ende der Partie möglich.");
+        }
+
+        // Both players may click "Neue Runde": the second one joins the round the first one started.
+        var existingRematch = await repository.FindRematchAsync(previous.Id, cancellationToken).ConfigureAwait(false);
+        if (existingRematch is not null)
+        {
+            return MapRematch(existingRematch, userId);
         }
 
         var module = modules.Get(previous.GameType);
-        var seats = previous.Seats
+        var remaining = previous.Seats
+            .Where(seat => seat.ConnectionStatus != SeatConnectionStatus.Removed)
             .OrderBy(seat => seat.Order)
+            .ToList();
+        if (remaining.Count < module.MinSeats || remaining.All(seat => seat.UserId != userId))
+        {
+            return new SessionLifecycleOutcome.Failure(
+                SessionLifecycleFailureKind.InvalidState,
+                "Für eine neue Runde sind nicht mehr genug Spieler da.");
+        }
+
+        // Multiplayer: the start rotates by one seat each round (Tic-Tac-Toe: X and O swap).
+        var shift = previous.Mode == GameMode.Multiplayer ? 1 : 0;
+        var seats = remaining
+            .Select((seat, index) => (Seat: seat, Order: (index + remaining.Count - shift) % remaining.Count))
+            .OrderBy(entry => entry.Order)
+            .Select(entry => entry.Seat with { Order = entry.Order })
             .Select(seat => new SeatCreateWrite(
                 Guid.NewGuid(),
                 seat.Order,
                 seat.Kind,
                 seat.DisplayName,
-                seat.Symbol,
+                Symbol(seat.Order),
                 seat.UserId,
                 seat.AiDifficulty,
                 seat.AiStrategyVersion,
@@ -653,14 +675,19 @@ public sealed class SessionLifecycleLogic(
                     0,
                     seed,
                     now,
-                    seats),
+                    seats,
+                    previous.Id),
                 cancellationToken)
             .ConfigureAwait(false);
         if (!created)
         {
-            return new SessionLifecycleOutcome.Failure(
-                SessionLifecycleFailureKind.Conflict,
-                "Die neue Partie konnte nicht erstellt werden. Bitte versuche es erneut.");
+            // Another player was faster (unique PreviousSessionId): use that round.
+            var concurrent = await repository.FindRematchAsync(previous.Id, cancellationToken).ConfigureAwait(false);
+            return concurrent is not null
+                ? MapRematch(concurrent, userId)
+                : new SessionLifecycleOutcome.Failure(
+                    SessionLifecycleFailureKind.Conflict,
+                    "Die neue Partie konnte nicht erstellt werden. Bitte versuche es erneut.");
         }
 
         var rematch = await repository.GetAsync(rematchId, cancellationToken).ConfigureAwait(false);
@@ -684,7 +711,18 @@ public sealed class SessionLifecycleLogic(
             await scheduler.EnqueueAsync(rematch.Id, cancellationToken).ConfigureAwait(false);
         }
 
+        // Players still on the old game get a hint with the new session.
+        await publisher.PublishRematchCreatedAsync(new RematchCreated(previous.Id, rematch.Id), cancellationToken).ConfigureAwait(false);
+
         return new SessionLifecycleOutcome.Success(rematch, mappedSeat.Id);
+    }
+
+    private static SessionLifecycleOutcome MapRematch(SessionSnapshot rematch, Guid userId)
+    {
+        var seat = rematch.Seats.FirstOrDefault(candidate => candidate.UserId == userId);
+        return seat is null
+            ? new SessionLifecycleOutcome.Failure(SessionLifecycleFailureKind.Forbidden, "Du bist kein Teilnehmer der neuen Runde.")
+            : new SessionLifecycleOutcome.Success(rematch, seat.Id);
     }
 
     private async Task<string?> CreateUniqueInviteCodeAsync(CancellationToken cancellationToken)

@@ -40,10 +40,12 @@ const TicTacToeGame: React.FC<TicTacToeGameProps> = ({ session, onChanged }) => 
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const [aiThinkingSeat, setAiThinkingSeat] = React.useState<string | null>(null);
   const [error, setError] = React.useState<string | null>(null);
+  const [rematchId, setRematchId] = React.useState<string | null>(null);
 
   useGameSessionEvents(session.id, {
     onAiThinking: (message) => setAiThinkingSeat(message.seatId),
     onActionApplied: () => setAiThinkingSeat(null),
+    onRematchCreated: (message) => setRematchId(message.newSessionId),
   });
 
   const state = parseState(session.stateJson);
@@ -162,9 +164,16 @@ const TicTacToeGame: React.FC<TicTacToeGameProps> = ({ session, onChanged }) => 
 
       {(session.status === "Finished" || session.status === "Aborted") && (
         <div className="ttt-actions">
-          <button type="button" onClick={() => void rematch()}>
-            Neue Runde
-          </button>
+          {rematchId ? (
+            <>
+              <span>Eine neue Runde wurde gestartet.</span>
+              <a href={`${sessionPagePaths.lobbyPrefix}${rematchId}`}>Zur neuen Runde</a>
+            </>
+          ) : (
+            <button type="button" onClick={() => void rematch()}>
+              Neue Runde
+            </button>
+          )}
           <a href={`${sessionPagePaths.historyPrefix}${session.id}`}>Verlauf ansehen</a>
         </div>
       )}

@@ -40,11 +40,22 @@ internal sealed class InMemoryGameSessionRepository : IGameSessionRepository
         return Task.FromResult(session);
     }
 
+    private readonly Dictionary<Guid, Guid> _rematches = [];
+
+    public Task<SessionSnapshot?> FindRematchAsync(Guid previousSessionId, CancellationToken cancellationToken) =>
+        Task.FromResult(_rematches.TryGetValue(previousSessionId, out var id) ? _sessions[id] : null);
+
     public Task<bool> CreateSessionAsync(SessionCreateWrite write, CancellationToken cancellationToken)
     {
-        if (_sessions.ContainsKey(write.Id))
+        if (_sessions.ContainsKey(write.Id)
+            || (write.PreviousSessionId is { } previous && _rematches.ContainsKey(previous)))
         {
             return Task.FromResult(false);
+        }
+
+        if (write.PreviousSessionId is { } previousId)
+        {
+            _rematches[previousId] = write.Id;
         }
 
         if (write.InviteCode is not null && _sessions.Values.Any(session => session.InviteCode == write.InviteCode))
