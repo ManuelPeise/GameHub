@@ -93,12 +93,9 @@ $env:GAMEHUB_TEST_POSTGRES = "Host=localhost;Port=5432;Username=postgres;Passwor
 dotnet test Tests.Data
 ```
 
-TypeScript-Typen aus `Shared.Models` neu erzeugen (der Test in `Tests.Shared` schlägt fehl, wenn sie veraltet sind):
-
-```
-cd sources
-$env:GAMEHUB_UPDATE_CONTRACTS = "1"; dotnet test Tests.Shared; Remove-Item Env:GAMEHUB_UPDATE_CONTRACTS
-```
+TypeScript-Typen aus `Shared.Models`: Ein lokaler Testlauf (`dotnet test` oder Test-Explorer) erzeugt
+`Web.App/src/api/generated/contracts.ts` automatisch neu – die Datei mit der DTO-Änderung committen.
+In der CI wird nur verglichen; eine vergessene Datei lässt den Build fehlschlagen.
 
 ## Docker: Testing und Live
 

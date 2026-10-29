@@ -12,6 +12,7 @@ import HomePage from "./HomePage";
 import LobbyPage from "./LobbyPage";
 import NewSessionPage from "./NewSessionPage";
 import OpenLobbiesPage from "./OpenLobbiesPage";
+import StatisticsPage from "./StatisticsPage";
 import HistoryDetailPage from "./history/HistoryDetailPage";
 import HistoryPage from "./history/HistoryPage";
 
@@ -19,6 +20,10 @@ import HistoryPage from "./history/HistoryPage";
 const App: React.FC = () => {
   if (window.location.pathname === sessionPagePaths.newSession) {
     return <NewSessionPage />;
+  }
+
+  if (window.location.pathname === "/statistics") {
+    return <StatisticsPage />;
   }
 
   if (window.location.pathname === sessionPagePaths.history) {

@@ -10,6 +10,7 @@ using Logic.Sessions;
 using Logic.Sessions.Ai;
 using Logic.Sessions.Connections;
 using Logic.Sessions.History;
+using Logic.Sessions.Statistics;
 using Logic.Shared.Interfaces;
 using Logic.Kniffel;
 using Logic.Kniffel.Ai;
@@ -85,6 +86,7 @@ builder.Services.AddScoped<PlayerConnectionLogic>();
 builder.Services.AddScoped<SingleplayerPauseLogic>();
 builder.Services.AddScoped<SessionMaintenanceLogic>();
 builder.Services.AddScoped<GameHistoryLogic>();
+builder.Services.AddScoped<StatisticsLogic>();
 builder.Services.AddHostedService<SessionCleanupJob>();
 builder.Services.AddScoped<IPlayerSessionCleanup>(services => services.GetRequiredService<PlayerConnectionLogic>());
 builder.Services.AddSingleton<ConnectionTracker>();
@@ -130,6 +132,7 @@ app.MapAdminEndpoints();
 app.MapHub<GameSessionHub>(GameHubRoutes.Path);
 app.MapGameSessionEndpoints();
 app.MapGameHistoryEndpoints();
+app.MapStatisticsEndpoints();
 
 // Reachable from Web.App through the Vite proxy as /api/info.
 app.MapGet("/api/info", (IAppSettings settings) => Results.Ok(new
