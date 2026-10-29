@@ -16,6 +16,7 @@ public sealed class SessionLifecycleLogicTests
     private readonly InMemoryGameSessionRepository _repository = new();
     private readonly InMemoryAccountStore _accounts = new();
     private readonly RecordingScheduler _scheduler = new();
+    private readonly AiTurnRunnerTests.RecordingGameEventPublisher _publisher = new();
     private readonly AiTurnRunnerTests.TestAppSettings _settings = new(TimeSpan.Zero);
     private readonly SessionLifecycleLogic _logic;
     private readonly Guid _userA = Guid.NewGuid();
@@ -34,6 +35,7 @@ public sealed class SessionLifecycleLogicTests
             new GameModuleRegistry([new TicTacToeModule()]),
             new AiStrategyRegistry([new TicTacToeAiPlayer(new TicTacToeModule(), new RandomTicTacToeStrategy())]),
             _scheduler,
+            _publisher,
             _settings,
             TimeProvider.System);
     }
@@ -184,7 +186,7 @@ public sealed class SessionLifecycleLogicTests
     {
         var modules = new GameModuleRegistry([new TicTacToeModule()]);
         var strategies = new AiStrategyRegistry([new TicTacToeAiPlayer(new TicTacToeModule(), new RandomTicTacToeStrategy())]);
-        var publisher = new AiTurnRunnerTests.RecordingGameEventPublisher();
+        var publisher = _publisher;
         var handler = new SubmitActionHandler(_repository, modules, publisher, TimeProvider.System, _scheduler);
         var runner = new AiTurnRunner(
             _repository, handler, modules, strategies, publisher,
@@ -323,6 +325,18 @@ public sealed class SessionLifecycleLogicTests
             await _logic.StartAsync(_userA, lobby.Id, CancellationToken.None));
         Xunit.Assert.Equal(SessionStatus.Running, started.Session.Status);
         Xunit.Assert.DoesNotContain(lobby.Id, _scheduler.Enqueued); // the human owner (X) starts
+    }
+
+    [Xunit.Fact]
+    public async Task LobbyChanges_PublishSessionUpdated()
+    {
+        var lobby = await CreateLobbyAsync(_userA);
+
+        await _logic.JoinByIdAsync(_userB, lobby.Id, CancellationToken.None);
+        await _logic.StartAsync(_userA, lobby.Id, CancellationToken.None);
+
+        Xunit.Assert.Equal(2, _publisher.SessionUpdatedEvents.Count(e => e.SessionId == lobby.Id));
+        Xunit.Assert.Equal(SessionStatus.Running, _publisher.SessionUpdatedEvents[^1].Status);
     }
 
     private sealed class RecordingScheduler : IAiTurnScheduler

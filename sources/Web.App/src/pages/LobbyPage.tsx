@@ -1,5 +1,6 @@
 import React from "react";
 import { getErrorMessage, sendRequest } from "../hooks/apiClient";
+import { useGameSessionEvents } from "../hooks/gameHub";
 import {
   difficultyOptions,
   sessionPagePaths,
@@ -15,7 +16,8 @@ type LobbyPageProps = {
   inviteCode?: string;
 };
 
-const pollIntervalMs = 2000;
+/** Fallback if the real-time connection is not available. */
+const pollIntervalMs = 15000;
 
 const LobbyPage: React.FC<LobbyPageProps> = ({ sessionId, inviteCode }) => {
   const [session, setSession] = React.useState<SessionDto | null>(null);
@@ -68,6 +70,23 @@ const LobbyPage: React.FC<LobbyPageProps> = ({ sessionId, inviteCode }) => {
       clearInterval(timer);
     };
   }, [inviteCode, sessionId]);
+
+  const reload = React.useCallback(async () => {
+    if (!sessionId) {
+      return;
+    }
+    try {
+      setSession(await sendRequest<SessionDto>("GET", { serviceUrl: sessionUrls.byId(sessionId) }));
+    } catch (failure) {
+      setError(getErrorMessage(failure, "Die Lobby konnte nicht geladen werden."));
+    }
+  }, [sessionId]);
+
+  useGameSessionEvents(sessionId, {
+    onSessionUpdated: () => void reload(),
+    onActionApplied: () => void reload(),
+    onReconnected: () => void reload(),
+  });
 
   const start = async () => {
     if (!session) {

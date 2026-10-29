@@ -1,3 +1,4 @@
+using System.Text.Json.Serialization;
 using System.Threading.RateLimiting;
 using Data.Database;
 using Data.DataAccessor.Games;
@@ -15,8 +16,10 @@ using Microsoft.AspNetCore.RateLimiting;
 using Services.Api.Authorization;
 using Services.Api.Endpoints;
 using Services.Api.Games;
+using Services.Api.Hubs;
 using Services.ServiceDefaults;
 using Shared.Models.Interfaces;
+using Shared.Models.Realtime;
 using Shared.Models.Settings;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -40,7 +43,13 @@ builder.Services.AddScoped<AccountRecoveryLogic>();
 builder.Services.AddScoped<TwoFactorLogic>();
 builder.Services.AddScoped<AccountDeletionLogic>();
 
-// Games: modules, the single move path and replay (endpoints follow with US-012/US-013).
+// Enums as names ("Lobby", "Running", ...) for HTTP and SignalR; the generated TypeScript types expect this.
+builder.Services.ConfigureHttpJsonOptions(options =>
+    options.SerializerOptions.Converters.Add(new JsonStringEnumConverter()));
+builder.Services.AddSignalR()
+    .AddJsonProtocol(options => options.PayloadSerializerOptions.Converters.Add(new JsonStringEnumConverter()));
+
+// Games: modules, the single move path and replay .
 builder.Services.AddSingleton(TimeProvider.System);
 builder.Services.AddSingleton<TicTacToeModule>();
 builder.Services.AddSingleton<IGameModule>(services => services.GetRequiredService<TicTacToeModule>());
@@ -50,7 +59,7 @@ builder.Services.AddSingleton<IAiStrategyRegistry, AiStrategyRegistry>();
 builder.Services.AddSingleton<IAiTurnScheduler, AiTurnScheduler>();
 builder.Services.AddSingleton<GameModuleRegistry>();
 builder.Services.AddSingleton<ReplayService>();
-builder.Services.AddSingleton<IGameEventPublisher, NullGameEventPublisher>();
+builder.Services.AddSingleton<IGameEventPublisher, SignalRGameEventPublisher>();
 builder.Services.AddGameSessionStore();
 builder.Services.AddScoped<SubmitActionHandler>();
 builder.Services.AddScoped<SessionLifecycleLogic>();
@@ -90,6 +99,7 @@ app.UseAuthorization();
 app.MapDefaultEndpoints();
 app.MapAccountEndpoints();
 app.MapAdminEndpoints();
+app.MapHub<GameSessionHub>(GameHubRoutes.Path);
 app.MapGameSessionEndpoints();
 
 // Reachable from Web.App through the Vite proxy as /api/info.

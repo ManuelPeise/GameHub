@@ -131,3 +131,6 @@ public sealed record OpenLobbySummary(
     string OwnerName,
     int SeatCount,
     DateTimeOffset CreatedAt);
+
+/// <summary>Event after a change of seats or status outside of a move.</summary>
+public sealed record SessionUpdated(Guid SessionId, int StateVersion, SessionStatus Status);

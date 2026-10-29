@@ -259,6 +259,14 @@ public sealed class AiTurnRunnerTests
     {
         public List<AiThinking> AiThinkingEvents { get; } = [];
 
+        public List<SessionUpdated> SessionUpdatedEvents { get; } = [];
+
+        public Task PublishSessionUpdatedAsync(SessionUpdated gameEvent, CancellationToken cancellationToken)
+        {
+            SessionUpdatedEvents.Add(gameEvent);
+            return Task.CompletedTask;
+        }
+
         public Task PublishAsync(GameActionApplied gameEvent, CancellationToken cancellationToken) => Task.CompletedTask;
 
         public Task PublishAiThinkingAsync(AiThinking gameEvent, CancellationToken cancellationToken)

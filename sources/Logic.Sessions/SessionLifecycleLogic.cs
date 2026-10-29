@@ -36,6 +36,7 @@ public sealed class SessionLifecycleLogic(
     GameModuleRegistry modules,
     IAiStrategyRegistry strategies,
     IAiTurnScheduler scheduler,
+    IGameEventPublisher publisher,
     IAppSettings appSettings,
     TimeProvider timeProvider)
 {
@@ -344,10 +345,7 @@ public sealed class SessionLifecycleLogic(
             if (await repository.AddSeatAsync(new SeatAddWrite(session.Id, session.StateVersion, seat, timeProvider.GetUtcNow()), cancellationToken)
                 .ConfigureAwait(false))
             {
-                var updated = await repository.GetAsync(session.Id, cancellationToken).ConfigureAwait(false);
-                return updated is null
-                    ? new SessionLifecycleOutcome.Failure(SessionLifecycleFailureKind.NotFound, "Die Partie wurde nicht gefunden.")
-                    : new SessionLifecycleOutcome.Success(updated, ownerSeat!.Id);
+                return await ReloadAndNotifyAsync(session.Id, ownerSeat!.Id, cancellationToken).ConfigureAwait(false);
             }
         }
 
@@ -386,16 +384,28 @@ public sealed class SessionLifecycleLogic(
                     cancellationToken)
                 .ConfigureAwait(false))
             {
-                var updated = await repository.GetAsync(session.Id, cancellationToken).ConfigureAwait(false);
-                return updated is null
-                    ? new SessionLifecycleOutcome.Failure(SessionLifecycleFailureKind.NotFound, "Die Partie wurde nicht gefunden.")
-                    : new SessionLifecycleOutcome.Success(updated, ownerSeat!.Id);
+                return await ReloadAndNotifyAsync(session.Id, ownerSeat!.Id, cancellationToken).ConfigureAwait(false);
             }
         }
 
         return new SessionLifecycleOutcome.Failure(
             SessionLifecycleFailureKind.Conflict,
             "Die Lobby wurde parallel geändert. Bitte versuche es erneut.");
+    }
+
+    private async Task<SessionLifecycleOutcome> ReloadAndNotifyAsync(Guid sessionId, Guid mySeatId, CancellationToken cancellationToken)
+    {
+        var updated = await repository.GetAsync(sessionId, cancellationToken).ConfigureAwait(false);
+        if (updated is null)
+        {
+            return new SessionLifecycleOutcome.Failure(SessionLifecycleFailureKind.NotFound, "Die Partie wurde nicht gefunden.");
+        }
+
+        await publisher.PublishSessionUpdatedAsync(
+                new SessionUpdated(updated.Id, updated.StateVersion, updated.Status),
+                cancellationToken)
+            .ConfigureAwait(false);
+        return new SessionLifecycleOutcome.Success(updated, mySeatId);
     }
 
     private async Task<(SessionSnapshot? Session, SeatSnapshot? OwnerSeat, SessionLifecycleOutcome.Failure? Failure)> LoadOwnLobbyAsync(
@@ -485,10 +495,7 @@ public sealed class SessionLifecycleLogic(
                 continue;
             }
 
-            var updated = await repository.GetAsync(session.Id, cancellationToken).ConfigureAwait(false);
-            return updated is null
-                ? new SessionLifecycleOutcome.Failure(SessionLifecycleFailureKind.NotFound, "Die Partie wurde nicht gefunden.")
-                : new SessionLifecycleOutcome.Success(updated, seat.Id);
+            return await ReloadAndNotifyAsync(session.Id, seat.Id, cancellationToken).ConfigureAwait(false);
         }
 
         return new SessionLifecycleOutcome.Failure(
@@ -550,6 +557,11 @@ public sealed class SessionLifecycleLogic(
             {
                 return new SessionLifecycleOutcome.Failure(SessionLifecycleFailureKind.NotFound, "Die Partie wurde nicht gefunden.");
             }
+
+            await publisher.PublishSessionUpdatedAsync(
+                    new SessionUpdated(updated.Id, updated.StateVersion, updated.Status),
+                    cancellationToken)
+                .ConfigureAwait(false);
 
             if (updated.CurrentSeatId is { } nextSeatId && updated.Seats.Any(seat => seat.Id == nextSeatId && seat.Kind == SeatKind.Ai))
             {
