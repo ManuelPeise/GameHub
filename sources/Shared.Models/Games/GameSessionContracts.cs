@@ -44,3 +44,43 @@ public sealed record OpenLobbyDto(
     int MaxSeats,
     bool IsMine,
     DateTimeOffset CreatedAt);
+
+/// <summary>Seat of a session in the game history, with its result.</summary>
+public sealed record HistorySeatDto(
+    Guid SeatId,
+    int Order,
+    string DisplayName,
+    SeatKind Kind,
+    bool IsMe,
+    GameOutcome? Outcome,
+    int? Placement,
+    int? Score);
+
+/// <summary>Entry of the list of own finished and aborted games.</summary>
+public sealed record GameHistoryEntryDto(
+    Guid SessionId,
+    string GameType,
+    GameMode Mode,
+    SessionStatus Status,
+    DateTimeOffset StartedAt,
+    DateTimeOffset EndedAt,
+    GameOutcome? MyOutcome,
+    int? MyPlacement,
+    IReadOnlyList<HistorySeatDto> Seats);
+
+/// <summary>One entry of the move log with the game state after it (for the replay).</summary>
+public sealed record HistoryActionDto(
+    int Sequence,
+    Guid? SeatId,
+    string ActionType,
+    string? PayloadJson,
+    string? RandomResultJson,
+    string? AiStrategyVersion,
+    DateTimeOffset CreatedAt,
+    string StateJson);
+
+/// <summary>A finished game with its complete move log.</summary>
+public sealed record GameHistoryDetailDto(
+    GameHistoryEntryDto Entry,
+    string InitialStateJson,
+    IReadOnlyList<HistoryActionDto> Actions);

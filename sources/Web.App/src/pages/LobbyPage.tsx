@@ -90,6 +90,18 @@ const LobbyPage: React.FC<LobbyPageProps> = ({ sessionId, inviteCode }) => {
     onReconnected: () => void reload(),
   });
 
+  const runSessionCommand = async (url: string, fallback: string) => {
+    setIsChangingSeats(true);
+    setError(null);
+    try {
+      setSession(await sendRequest<SessionDto>("POST", { serviceUrl: url }));
+    } catch (failure) {
+      setError(getErrorMessage(failure, fallback));
+    } finally {
+      setIsChangingSeats(false);
+    }
+  };
+
   const start = async () => {
     if (!session) {
       return;
@@ -160,7 +172,7 @@ const LobbyPage: React.FC<LobbyPageProps> = ({ sessionId, inviteCode }) => {
 
   return (
     <main className="account-page">
-      <h1>Lobby</h1>
+      <h1>{session.mode === "Singleplayer" ? "Partie gegen die KI" : "Lobby"}</h1>
       <ConnectionBanner />
 
       {session.inviteCode && (
@@ -237,8 +249,45 @@ const LobbyPage: React.FC<LobbyPageProps> = ({ sessionId, inviteCode }) => {
         </p>
       )}
 
+      {session.status === "Paused" && <p className="account-success">Die Partie ist pausiert.</p>}
+
+      {session.mode === "Singleplayer" && (session.status === "Running" || session.status === "Paused") && (
+        <div className="account-form">
+          {session.status === "Running" && session.currentSeatId === session.mySeatId && (
+            <button
+              type="button"
+              disabled={isChangingSeats}
+              onClick={() => void runSessionCommand(sessionUrls.pause(session.id), "Die Partie konnte nicht pausiert werden.")}
+            >
+              Pausieren
+            </button>
+          )}
+          {session.status === "Paused" && (
+            <button
+              type="button"
+              disabled={isChangingSeats}
+              onClick={() => void runSessionCommand(sessionUrls.resume(session.id), "Die Partie konnte nicht fortgesetzt werden.")}
+            >
+              Fortsetzen
+            </button>
+          )}
+          <button
+            type="button"
+            disabled={isChangingSeats}
+            onClick={() => void runSessionCommand(sessionUrls.abandon(session.id), "Die Partie konnte nicht aufgegeben werden.")}
+          >
+            Aufgeben
+          </button>
+        </div>
+      )}
+
       {session.status === "Finished" && <p className="account-success">Die Partie ist beendet.</p>}
       {session.status === "Aborted" && <p className="account-error">Die Partie wurde abgebrochen.</p>}
+      {(session.status === "Finished" || session.status === "Aborted") && (
+        <p className="account-links">
+          <a href={`${sessionPagePaths.historyPrefix}${session.id}`}>Verlauf ansehen</a>
+        </p>
+      )}
     </main>
   );
 };

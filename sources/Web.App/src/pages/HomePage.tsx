@@ -44,6 +44,7 @@ const HomePage: React.FC = () => {
           <p className="account-links">
             <a href={sessionPagePaths.newSession}>Neue Partie</a>
             <a href={sessionPagePaths.openLobbies}>Offene Partien</a>
+            <a href={sessionPagePaths.history}>Spielverlauf</a>
             <a href={pagePaths.deleteAccount}>Konto löschen</a>
           </p>
         </>

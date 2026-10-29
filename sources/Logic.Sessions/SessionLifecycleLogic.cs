@@ -271,6 +271,26 @@ public sealed class SessionLifecycleLogic(
             "Die Partie wurde nicht gefunden.",
             cancellationToken);
 
+    /// <summary>Own open sessions (lobby, running, paused), e.g. to point to an open game before starting a new one.</summary>
+    public async Task<IReadOnlyList<SessionLifecycleOutcome.Success>> ListMyOpenAsync(Guid userId, CancellationToken cancellationToken)
+    {
+        var ids = await repository
+            .GetSessionIdsForUserAsync(userId, [SessionStatus.Lobby, SessionStatus.Running, SessionStatus.Paused], cancellationToken)
+            .ConfigureAwait(false);
+        var open = new List<SessionLifecycleOutcome.Success>();
+        foreach (var id in ids)
+        {
+            var session = await repository.GetAsync(id, cancellationToken).ConfigureAwait(false);
+            var seat = session?.Seats.FirstOrDefault(candidate => candidate.UserId == userId);
+            if (session is not null && seat is not null)
+            {
+                open.Add(new SessionLifecycleOutcome.Success(session, seat.Id));
+            }
+        }
+
+        return open;
+    }
+
     /// <summary>Open multiplayer lobbies that still have a free seat (public list).</summary>
     public async Task<IReadOnlyList<OpenLobbyDto>> ListOpenLobbiesAsync(Guid userId, string? gameType, CancellationToken cancellationToken)
     {

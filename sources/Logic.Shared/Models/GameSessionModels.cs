@@ -146,3 +146,24 @@ public sealed record SeatStatusChange(Guid SeatId, SeatConnectionStatus Status, 
 
 /// <summary>A human seat of a running multiplayer session (for connection tracking and deadlines).</summary>
 public sealed record PlayerSeatRef(Guid SessionId, Guid SeatId, Guid UserId);
+
+/// <summary>Seat of a finished or aborted session with its result (game history).</summary>
+public sealed record HistorySeatRecord(
+    Guid SeatId,
+    int Order,
+    string DisplayName,
+    SeatKind Kind,
+    Guid? UserId,
+    GameOutcome? Outcome,
+    int? Placement,
+    int? Score);
+
+/// <summary>A finished or aborted session for the game history.</summary>
+public sealed record HistoryRecord(
+    Guid SessionId,
+    string GameType,
+    GameMode Mode,
+    SessionStatus Status,
+    DateTimeOffset StartedAt,
+    DateTimeOffset EndedAt,
+    IReadOnlyList<HistorySeatRecord> Seats);

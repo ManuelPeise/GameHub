@@ -16,6 +16,13 @@ public static class GameSessionEndpoints
         sessions.MapPost(string.Empty, CreateAsync);
         sessions.MapGet("/{id:guid}", GetAsync);
         sessions.MapGet("/open", ListOpenLobbiesAsync);
+        sessions.MapGet("/mine", ListMyOpenAsync);
+        sessions.MapPost("/{id:guid}/pause", (Guid id, SingleplayerPauseLogic pauses, IAppSettings settings, ClaimsPrincipal principal, CancellationToken ct) =>
+            RunAsync(principal, settings, userId => pauses.PauseAsync(userId, id, ct)));
+        sessions.MapPost("/{id:guid}/resume", (Guid id, SingleplayerPauseLogic pauses, IAppSettings settings, ClaimsPrincipal principal, CancellationToken ct) =>
+            RunAsync(principal, settings, userId => pauses.ResumeAsync(userId, id, ct)));
+        sessions.MapPost("/{id:guid}/abandon", (Guid id, SingleplayerPauseLogic pauses, IAppSettings settings, ClaimsPrincipal principal, CancellationToken ct) =>
+            RunAsync(principal, settings, userId => pauses.AbandonAsync(userId, id, ct)));
         sessions.MapPost("/join", JoinAsync);
         sessions.MapPost("/{id:guid}/join", JoinByIdAsync);
         sessions.MapPost("/{id:guid}/ai-seats", AddAiSeatAsync);
@@ -76,6 +83,31 @@ public static class GameSessionEndpoints
 
         var outcome = await logic.JoinAsync(userId.Value, request, cancellationToken);
         return ToSessionResult(appSettings, outcome);
+    }
+
+    private static async Task<IResult> RunAsync(
+        ClaimsPrincipal principal,
+        IAppSettings appSettings,
+        Func<Guid, Task<SessionLifecycleOutcome>> action)
+    {
+        var userId = GetUserId(principal);
+        return userId is null ? Results.Unauthorized() : ToSessionResult(appSettings, await action(userId.Value));
+    }
+
+    private static async Task<IResult> ListMyOpenAsync(
+        SessionLifecycleLogic logic,
+        IAppSettings appSettings,
+        ClaimsPrincipal principal,
+        CancellationToken cancellationToken)
+    {
+        var userId = GetUserId(principal);
+        if (userId is null)
+        {
+            return Results.Unauthorized();
+        }
+
+        var open = await logic.ListMyOpenAsync(userId.Value, cancellationToken);
+        return Results.Ok(open.Select(success => ToDto(success, appSettings.Game.TurnTimeout)).ToList());
     }
 
     private static async Task<IResult> ListOpenLobbiesAsync(

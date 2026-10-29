@@ -12,11 +12,21 @@ import HomePage from "./HomePage";
 import LobbyPage from "./LobbyPage";
 import NewSessionPage from "./NewSessionPage";
 import OpenLobbiesPage from "./OpenLobbiesPage";
+import HistoryDetailPage from "./history/HistoryDetailPage";
+import HistoryPage from "./history/HistoryPage";
 
 /** Minimal path-based page selection until routing and layout arrive. */
 const App: React.FC = () => {
   if (window.location.pathname === sessionPagePaths.newSession) {
     return <NewSessionPage />;
+  }
+
+  if (window.location.pathname === sessionPagePaths.history) {
+    return <HistoryPage />;
+  }
+
+  if (window.location.pathname.startsWith(sessionPagePaths.historyPrefix)) {
+    return <HistoryDetailPage sessionId={window.location.pathname.slice(sessionPagePaths.historyPrefix.length)} />;
   }
 
   if (window.location.pathname === sessionPagePaths.openLobbies) {

@@ -237,6 +237,48 @@ internal sealed class InMemoryGameSessionRepository : IGameSessionRepository
                     .Select(seat => new PlayerSeatRef(s.Id, seat.Id, seat.UserId!.Value))),
         ]);
 
+    /// <summary>Last activity per session for the retention tests (default: now).</summary>
+    public Dictionary<Guid, DateTimeOffset> LastActivity { get; } = [];
+
+    public Task<IReadOnlyList<Guid>> GetInactiveSessionIdsAsync(DateTimeOffset cutoff, CancellationToken cancellationToken) =>
+        Task.FromResult<IReadOnlyList<Guid>>(
+        [
+            .. _sessions.Values
+                .Where(s => s.Status is SessionStatus.Lobby or SessionStatus.Running or SessionStatus.Paused
+                    && LastActivity.TryGetValue(s.Id, out var at) && at <= cutoff)
+                .Select(s => s.Id),
+        ]);
+
+    public Task<IReadOnlyList<HistoryRecord>> GetHistoryAsync(Guid userId, int skip, int take, CancellationToken cancellationToken) =>
+        Task.FromResult<IReadOnlyList<HistoryRecord>>(
+        [
+            .. _sessions.Values
+                .Where(s => s.Status is SessionStatus.Finished or SessionStatus.Aborted && s.Seats.Any(seat => seat.UserId == userId))
+                .Skip(skip)
+                .Take(take)
+                .Select(ToHistory),
+        ]);
+
+    public Task<HistoryRecord?> GetHistoryRecordAsync(Guid sessionId, CancellationToken cancellationToken) =>
+        Task.FromResult(_sessions.TryGetValue(sessionId, out var session) ? ToHistory(session) : null);
+
+    private HistoryRecord ToHistory(SessionSnapshot session) =>
+        new(
+            session.Id,
+            session.GameType,
+            session.Mode,
+            session.Status,
+            DateTimeOffset.UnixEpoch,
+            DateTimeOffset.UnixEpoch,
+            [
+                .. session.Seats.Select(seat =>
+                {
+                    var result = Results.LastOrDefault(r => r.SeatId == seat.Id);
+                    return new HistorySeatRecord(seat.Id, seat.Order, seat.DisplayName, seat.Kind, seat.UserId,
+                        result?.Outcome, result?.Placement, result?.Score);
+                }),
+            ]);
+
     public Task<bool> SetStatusAsync(Guid sessionId, int expectedVersion, SessionStatus status, DateTimeOffset at, CancellationToken cancellationToken)
     {
         if (!_sessions.TryGetValue(sessionId, out var session) || session.StateVersion != expectedVersion)

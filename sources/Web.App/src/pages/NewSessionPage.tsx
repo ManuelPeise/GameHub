@@ -1,20 +1,63 @@
 import React from "react";
-import { sendRequest } from "../hooks/apiClient";
+import { getErrorMessage, sendRequest } from "../hooks/apiClient";
 import { pagePaths } from "../api/account";
 import {
+  gameNames,
   sessionPagePaths,
   sessionUrls,
+  statusLabels,
   type CreateSessionRequest,
   type SessionDto,
 } from "../api/sessions";
 import "./account/AccountPages.css";
 
 const NewSessionPage: React.FC = () => {
-  const [mode, setMode] = React.useState<"Singleplayer" | "Multiplayer">("Singleplayer");
+  const [mode, setMode] = React.useState<"Singleplayer" | "Multiplayer">(
+    "Singleplayer",
+  );
   const [difficulty, setDifficulty] = React.useState("Easy");
   const [message, setMessage] = React.useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
+  const [openSessions, setOpenSessions] = React.useState<SessionDto[]>([]);
+
+  const loadOpen = React.useCallback(async () => {
+    try {
+      setOpenSessions(
+        (await sendRequest<SessionDto[]>("GET", {
+          serviceUrl: sessionUrls.mine,
+        })) ?? [],
+      );
+    } catch {
+      setOpenSessions([]);
+    }
+  }, []);
+
+  React.useEffect(() => {
+    const onLoad = async () => {
+      await loadOpen();
+    };
+    void onLoad();
+  }, [loadOpen]);
+
+  const abandon = async (session: SessionDto) => {
+    setError(null);
+    try {
+      await sendRequest<SessionDto>("POST", {
+        serviceUrl: sessionUrls.abandon(session.id),
+      });
+      await loadOpen();
+    } catch (failure) {
+      setError(
+        getErrorMessage(failure, "Die Partie konnte nicht aufgegeben werden."),
+      );
+    }
+  };
+
+  const openSingleplayer = openSessions.find(
+    (session) =>
+      session.mode === "Singleplayer" && session.gameType === "TicTacToe",
+  );
 
   const submit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -30,23 +73,23 @@ const NewSessionPage: React.FC = () => {
     };
 
     try {
-      const created = await sendRequest<SessionDto, CreateSessionRequest>("POST", {
-        serviceUrl: sessionUrls.base,
-        body: request,
-      });
+      const created = await sendRequest<SessionDto, CreateSessionRequest>(
+        "POST",
+        {
+          serviceUrl: sessionUrls.base,
+          body: request,
+        },
+      );
       if (!created) {
         setError("Die Partie konnte nicht erstellt werden.");
         return;
       }
 
-      if (created.mode === "Multiplayer") {
-        window.location.assign(`${sessionPagePaths.lobbyPrefix}${created.id}`);
-        return;
-      }
-
-      setMessage("Singleplayer-Partie erstellt. Die Spielansicht folgt mit den nächsten Stories.");
+      window.location.assign(`${sessionPagePaths.lobbyPrefix}${created.id}`);
     } catch {
-      setError("Die Partie konnte nicht erstellt werden. Bitte versuche es erneut.");
+      setError(
+        "Die Partie konnte nicht erstellt werden. Bitte versuche es erneut.",
+      );
     } finally {
       setIsSubmitting(false);
     }
@@ -55,13 +98,44 @@ const NewSessionPage: React.FC = () => {
   return (
     <main className="account-page">
       <h1>Neue Partie</h1>
+
+      {openSessions.length > 0 && (
+        <section className="account-form">
+          <h2>Deine offenen Partien</h2>
+          <ul>
+            {openSessions.map((session) => (
+              <li key={session.id}>
+                {gameNames[session.gameType] ?? session.gameType} (
+                {session.mode === "Singleplayer" ? "gegen KI" : "Multiplayer"},{" "}
+                {statusLabels[session.status]}){" "}
+                <a href={`${sessionPagePaths.lobbyPrefix}${session.id}`}>
+                  {session.status === "Paused" ? "Fortsetzen" : "Öffnen"}
+                </a>{" "}
+                {session.mode === "Singleplayer" && (
+                  <button type="button" onClick={() => void abandon(session)}>
+                    Aufgeben
+                  </button>
+                )}
+              </li>
+            ))}
+          </ul>
+          {mode === "Singleplayer" && openSingleplayer && (
+            <p className="account-error" role="status">
+              Du hast bereits eine offene Partie gegen die KI. „Partie
+              erstellen“ öffnet sie; gib sie auf, um neu zu beginnen.
+            </p>
+          )}
+        </section>
+      )}
       <form className="account-form" onSubmit={submit}>
         <div className="account-field">
           <label htmlFor="mode">Modus</label>
           <select
             id="mode"
             value={mode}
-            onChange={(event) => setMode(event.target.value as "Singleplayer" | "Multiplayer")}
+            onChange={(event) =>
+              setMode(event.target.value as "Singleplayer" | "Multiplayer")
+            }
           >
             <option value="Singleplayer">Singleplayer</option>
             <option value="Multiplayer">Multiplayer</option>
@@ -71,7 +145,11 @@ const NewSessionPage: React.FC = () => {
         {mode === "Singleplayer" && (
           <div className="account-field">
             <label htmlFor="difficulty">Schwierigkeitsgrad</label>
-            <select id="difficulty" value={difficulty} onChange={(event) => setDifficulty(event.target.value)}>
+            <select
+              id="difficulty"
+              value={difficulty}
+              onChange={(event) => setDifficulty(event.target.value)}
+            >
               <option value="Easy">Einfach</option>
               <option value="Medium">Mittel</option>
               <option value="Hard">Schwer</option>

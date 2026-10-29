@@ -1,3 +1,4 @@
+using Logic.Sessions;
 using Logic.Sessions.Connections;
 using Shared.Models.Interfaces;
 
@@ -34,6 +35,10 @@ public sealed class DisconnectScheduler(
             await using var scope = scopeFactory.CreateAsyncScope();
             var connections = scope.ServiceProvider.GetRequiredService<PlayerConnectionLogic>();
             await connections.UserDisconnectedAsync(userId, cancellationToken).ConfigureAwait(false);
+
+            // Singleplayer: a lost connection pauses the game (US-016).
+            var pauses = scope.ServiceProvider.GetRequiredService<SingleplayerPauseLogic>();
+            await pauses.PauseOnDisconnectAsync(userId, cancellationToken).ConfigureAwait(false);
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {

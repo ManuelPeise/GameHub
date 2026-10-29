@@ -9,6 +9,7 @@ using Logic.Core.Ai;
 using Logic.Sessions;
 using Logic.Sessions.Ai;
 using Logic.Sessions.Connections;
+using Logic.Sessions.History;
 using Logic.Shared.Interfaces;
 using Logic.TicTacToe;
 using Logic.TicTacToe.Ai;
@@ -66,6 +67,10 @@ builder.Services.AddScoped<SubmitActionHandler>();
 builder.Services.AddScoped<SessionLifecycleLogic>();
 builder.Services.AddScoped<AiTurnRunner>();
 builder.Services.AddScoped<PlayerConnectionLogic>();
+builder.Services.AddScoped<SingleplayerPauseLogic>();
+builder.Services.AddScoped<SessionMaintenanceLogic>();
+builder.Services.AddScoped<GameHistoryLogic>();
+builder.Services.AddHostedService<SessionCleanupJob>();
 builder.Services.AddScoped<IPlayerSessionCleanup>(services => services.GetRequiredService<PlayerConnectionLogic>());
 builder.Services.AddSingleton<ConnectionTracker>();
 builder.Services.AddSingleton<DisconnectScheduler>();
@@ -107,6 +112,7 @@ app.MapAccountEndpoints();
 app.MapAdminEndpoints();
 app.MapHub<GameSessionHub>(GameHubRoutes.Path);
 app.MapGameSessionEndpoints();
+app.MapGameHistoryEndpoints();
 
 // Reachable from Web.App through the Vite proxy as /api/info.
 app.MapGet("/api/info", (IAppSettings settings) => Results.Ok(new

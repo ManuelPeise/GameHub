@@ -51,6 +51,15 @@ public interface IGameSessionRepository
     /// <summary>Sets the status (e.g. Aborted) with version check; false on conflict.</summary>
     Task<bool> SetStatusAsync(Guid sessionId, int expectedVersion, SessionStatus status, DateTimeOffset at, CancellationToken cancellationToken);
 
+    /// <summary>Open sessions (Lobby, Running, Paused) without activity since the cutoff.</summary>
+    Task<IReadOnlyList<Guid>> GetInactiveSessionIdsAsync(DateTimeOffset cutoff, CancellationToken cancellationToken);
+
+    /// <summary>Finished and aborted sessions of the user, newest first.</summary>
+    Task<IReadOnlyList<HistoryRecord>> GetHistoryAsync(Guid userId, int skip, int take, CancellationToken cancellationToken);
+
+    /// <summary>History data (seats with results) of one session; null if it does not exist.</summary>
+    Task<HistoryRecord?> GetHistoryRecordAsync(Guid sessionId, CancellationToken cancellationToken);
+
     /// <summary>Running sessions where the current seat is an AI seat.</summary>
     Task<IReadOnlyList<Guid>> GetRunningSessionsWithAiTurnAsync(CancellationToken cancellationToken);
 }

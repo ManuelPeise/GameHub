@@ -29,6 +29,46 @@ export type CreateSessionRequest = {
   preferredSeat?: number | null;
 };
 
+export type GameHistoryDetailDto = {
+  entry: GameHistoryEntryDto;
+  initialStateJson: string;
+  actions: HistoryActionDto[];
+};
+
+export type GameHistoryEntryDto = {
+  sessionId: string;
+  gameType: string;
+  mode: GameMode;
+  status: SessionStatus;
+  startedAt: string;
+  endedAt: string;
+  myOutcome?: GameOutcome | null;
+  myPlacement?: number | null;
+  seats: HistorySeatDto[];
+};
+
+export type HistoryActionDto = {
+  sequence: number;
+  seatId?: string | null;
+  actionType: string;
+  payloadJson?: string | null;
+  randomResultJson?: string | null;
+  aiStrategyVersion?: string | null;
+  createdAt: string;
+  stateJson: string;
+};
+
+export type HistorySeatDto = {
+  seatId: string;
+  order: number;
+  displayName: string;
+  kind: SeatKind;
+  isMe: boolean;
+  outcome?: GameOutcome | null;
+  placement?: number | null;
+  score?: number | null;
+};
+
 export type JoinSessionRequest = {
   inviteCode: string;
 };

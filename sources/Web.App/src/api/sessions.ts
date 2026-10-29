@@ -1,6 +1,11 @@
 // DTO types are generated from Shared.Models (see generated/contracts.ts); do not define them here.
 export type {
   AddAiSeatRequest,
+  GameHistoryDetailDto,
+  GameHistoryEntryDto,
+  GameOutcome,
+  HistoryActionDto,
+  HistorySeatDto,
   CreateSessionRequest,
   GameMode,
   JoinSessionRequest,
@@ -17,6 +22,12 @@ export const sessionUrls = {
   base: "/api/sessions",
   byId: (id: string) => `/api/sessions/${id}`,
   open: "/api/sessions/open",
+  mine: "/api/sessions/mine",
+  pause: (id: string) => `/api/sessions/${id}/pause`,
+  resume: (id: string) => `/api/sessions/${id}/resume`,
+  abandon: (id: string) => `/api/sessions/${id}/abandon`,
+  history: "/api/history",
+  historyDetail: (id: string) => `/api/history/${id}`,
   join: "/api/sessions/join",
   joinById: (id: string) => `/api/sessions/${id}/join`,
   aiSeats: (id: string) => `/api/sessions/${id}/ai-seats`,
@@ -29,6 +40,8 @@ export const sessionUrls = {
 export const sessionPagePaths = {
   newSession: "/sessions/new",
   openLobbies: "/sessions/open",
+  history: "/history",
+  historyPrefix: "/history/",
   lobbyPrefix: "/lobby/",
   joinPrefix: "/join/",
 } as const;
@@ -43,3 +56,18 @@ export const difficultyOptions = [
   { value: "Medium", label: "Mittel" },
   { value: "Hard", label: "Schwer" },
 ] as const;
+
+export const statusLabels: Record<string, string> = {
+  Lobby: "Lobby",
+  Running: "läuft",
+  Paused: "pausiert",
+  Finished: "beendet",
+  Aborted: "abgebrochen",
+};
+
+export const outcomeLabels: Record<string, string> = {
+  Win: "Gewonnen",
+  Loss: "Verloren",
+  Draw: "Unentschieden",
+  Removed: "Entfernt",
+};

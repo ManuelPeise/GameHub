@@ -407,6 +407,76 @@ public sealed class GameSessionRepository(GameDbContext database) : IGameSession
                 cancellationToken)
             .ConfigureAwait(false) == 1;
 
+    public async Task<IReadOnlyList<Guid>> GetInactiveSessionIdsAsync(DateTimeOffset cutoff, CancellationToken cancellationToken) =>
+        await database.GameSessions.AsNoTracking()
+            .Where(session => (session.Status == SessionStatus.Lobby
+                    || session.Status == SessionStatus.Running
+                    || session.Status == SessionStatus.Paused)
+                && session.LastActivityAt <= cutoff)
+            .Select(session => session.Id)
+            .ToListAsync(cancellationToken)
+            .ConfigureAwait(false);
+
+    public async Task<IReadOnlyList<HistoryRecord>> GetHistoryAsync(Guid userId, int skip, int take, CancellationToken cancellationToken)
+    {
+        var sessionIds = await database.GameSessions.AsNoTracking()
+            .Where(session => (session.Status == SessionStatus.Finished || session.Status == SessionStatus.Aborted)
+                && session.Seats.Any(seat => seat.UserId == userId))
+            .OrderByDescending(session => session.UpdatedAt)
+            .Skip(skip)
+            .Take(take)
+            .Select(session => session.Id)
+            .ToListAsync(cancellationToken)
+            .ConfigureAwait(false);
+
+        return await LoadHistoryAsync(sessionIds, cancellationToken).ConfigureAwait(false);
+    }
+
+    public async Task<HistoryRecord?> GetHistoryRecordAsync(Guid sessionId, CancellationToken cancellationToken) =>
+        (await LoadHistoryAsync([sessionId], cancellationToken).ConfigureAwait(false)).FirstOrDefault();
+
+    private async Task<List<HistoryRecord>> LoadHistoryAsync(List<Guid> sessionIds, CancellationToken cancellationToken)
+    {
+        var sessions = await database.GameSessions.AsNoTracking()
+            .Include(session => session.Seats)
+            .Where(session => sessionIds.Contains(session.Id))
+            .ToListAsync(cancellationToken)
+            .ConfigureAwait(false);
+        var results = await database.GameResults.AsNoTracking()
+            .Where(result => sessionIds.Contains(result.SessionId))
+            .ToListAsync(cancellationToken)
+            .ConfigureAwait(false);
+
+        return
+        [
+            .. sessionIds
+                .Select(id => sessions.FirstOrDefault(session => session.Id == id))
+                .OfType<GameSession>()
+                .Select(session => new HistoryRecord(
+                    session.Id,
+                    session.GameType,
+                    session.Mode,
+                    session.Status,
+                    session.CreatedAt,
+                    session.UpdatedAt,
+                    [
+                        .. session.Seats.OrderBy(seat => seat.Order).Select(seat =>
+                        {
+                            var result = results.FirstOrDefault(r => r.SessionId == session.Id && r.SeatId == seat.Id);
+                            return new HistorySeatRecord(
+                                seat.Id,
+                                seat.Order,
+                                seat.DisplayName,
+                                seat.Kind,
+                                seat.UserId,
+                                result?.Outcome,
+                                result?.Placement,
+                                result?.Score);
+                        }),
+                    ])),
+        ];
+    }
+
     public async Task<IReadOnlyList<Guid>> GetRunningSessionsWithAiTurnAsync(CancellationToken cancellationToken) =>
         await database.GameSessions.AsNoTracking()
             .Where(session => session.Status == SessionStatus.Running)
