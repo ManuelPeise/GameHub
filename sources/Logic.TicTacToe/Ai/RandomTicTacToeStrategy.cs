@@ -4,11 +4,12 @@ using Logic.TicTacToe.Domain;
 
 namespace Logic.TicTacToe.Ai;
 
+/// <summary>Easy: a random legal move.</summary>
 public sealed class RandomTicTacToeStrategy : IAiStrategy<TicTacToeView, PlaceMark>
 {
     public string Difficulty => AiDifficulties.Easy;
 
-    public string Version => "1";
+    public string Version => "easy-1";
 
     public PlaceMark ChooseAction(TicTacToeView view, int seat, IRandom random)
     {

@@ -2,6 +2,7 @@ import React from "react";
 import { getErrorMessage, sendRequest } from "../hooks/apiClient";
 import ConnectionBanner from "../components/ConnectionBanner";
 import TurnTimer from "../components/TurnTimer";
+import TicTacToeGame from "../games/tictactoe/TicTacToeGame";
 import { useGameSessionEvents } from "../hooks/gameHub";
 import {
   difficultyOptions,
@@ -167,6 +168,7 @@ const LobbyPage: React.FC<LobbyPageProps> = ({ sessionId, inviteCode }) => {
 
   const mySeat = session.seats.find((seat) => seat.id === session.mySeatId);
   const currentSeat = session.seats.find((seat) => seat.id === session.currentSeatId);
+  const hasBoard = session.gameType === "TicTacToe" && session.status !== "Lobby";
   const canStart = session.status === "Lobby" && mySeat?.order === 0;
   const inviteLink = session.inviteCode ? `${window.location.origin}${sessionPagePaths.joinPrefix}${session.inviteCode}` : null;
 
@@ -237,7 +239,11 @@ const LobbyPage: React.FC<LobbyPageProps> = ({ sessionId, inviteCode }) => {
         </button>
       )}
 
-      {session.status === "Running" && (
+      {hasBoard && (
+        <TicTacToeGame session={session} onChanged={(updated) => (updated ? setSession(updated) : void reload())} />
+      )}
+
+      {!hasBoard && session.status === "Running" && (
         <p className="account-success">
           Die Partie läuft.
           {currentSeat && (
@@ -249,7 +255,7 @@ const LobbyPage: React.FC<LobbyPageProps> = ({ sessionId, inviteCode }) => {
         </p>
       )}
 
-      {session.status === "Paused" && <p className="account-success">Die Partie ist pausiert.</p>}
+      {!hasBoard && session.status === "Paused" && <p className="account-success">Die Partie ist pausiert.</p>}
 
       {session.mode === "Singleplayer" && (session.status === "Running" || session.status === "Paused") && (
         <div className="account-form">
@@ -281,9 +287,9 @@ const LobbyPage: React.FC<LobbyPageProps> = ({ sessionId, inviteCode }) => {
         </div>
       )}
 
-      {session.status === "Finished" && <p className="account-success">Die Partie ist beendet.</p>}
-      {session.status === "Aborted" && <p className="account-error">Die Partie wurde abgebrochen.</p>}
-      {(session.status === "Finished" || session.status === "Aborted") && (
+      {!hasBoard && session.status === "Finished" && <p className="account-success">Die Partie ist beendet.</p>}
+      {!hasBoard && session.status === "Aborted" && <p className="account-error">Die Partie wurde abgebrochen.</p>}
+      {!hasBoard && (session.status === "Finished" || session.status === "Aborted") && (
         <p className="account-links">
           <a href={`${sessionPagePaths.historyPrefix}${session.id}`}>Verlauf ansehen</a>
         </p>

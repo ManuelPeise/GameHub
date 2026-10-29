@@ -16,6 +16,7 @@ const NewSessionPage: React.FC = () => {
     "Singleplayer",
   );
   const [difficulty, setDifficulty] = React.useState("Easy");
+  const [preferredSeat, setPreferredSeat] = React.useState(0);
   const [message, setMessage] = React.useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
@@ -69,7 +70,7 @@ const NewSessionPage: React.FC = () => {
       gameType: "TicTacToe",
       mode,
       difficulty: mode === "Singleplayer" ? difficulty : null,
-      preferredSeat: 0,
+      preferredSeat: mode === "Singleplayer" ? preferredSeat : 0,
     };
 
     try {
@@ -153,6 +154,20 @@ const NewSessionPage: React.FC = () => {
               <option value="Easy">Einfach</option>
               <option value="Medium">Mittel</option>
               <option value="Hard">Schwer</option>
+            </select>
+          </div>
+        )}
+
+        {mode === "Singleplayer" && (
+          <div className="account-field">
+            <label htmlFor="symbol">Du spielst</label>
+            <select
+              id="symbol"
+              value={preferredSeat}
+              onChange={(event) => setPreferredSeat(Number(event.target.value))}
+            >
+              <option value={0}>X (du beginnst)</option>
+              <option value={1}>O (die KI beginnt)</option>
             </select>
           </div>
         )}

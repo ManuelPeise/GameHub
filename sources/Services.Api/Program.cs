@@ -55,8 +55,13 @@ builder.Services.AddSignalR()
 builder.Services.AddSingleton(TimeProvider.System);
 builder.Services.AddSingleton<TicTacToeModule>();
 builder.Services.AddSingleton<IGameModule>(services => services.GetRequiredService<TicTacToeModule>());
-builder.Services.AddSingleton<IAiStrategy<TicTacToeView, Logic.TicTacToe.Domain.PlaceMark>, RandomTicTacToeStrategy>();
-builder.Services.AddSingleton<IAiPlayer, TicTacToeAiPlayer>();
+// One AI player per difficulty; a new level only needs a new strategy class and a line here.
+builder.Services.AddSingleton<IAiPlayer>(services =>
+    new TicTacToeAiPlayer(services.GetRequiredService<TicTacToeModule>(), new RandomTicTacToeStrategy()));
+builder.Services.AddSingleton<IAiPlayer>(services =>
+    new TicTacToeAiPlayer(services.GetRequiredService<TicTacToeModule>(), new BlockingTicTacToeStrategy()));
+builder.Services.AddSingleton<IAiPlayer>(services =>
+    new TicTacToeAiPlayer(services.GetRequiredService<TicTacToeModule>(), new MinimaxTicTacToeStrategy()));
 builder.Services.AddSingleton<IAiStrategyRegistry, AiStrategyRegistry>();
 builder.Services.AddSingleton<IAiTurnScheduler, AiTurnScheduler>();
 builder.Services.AddSingleton<GameModuleRegistry>();
