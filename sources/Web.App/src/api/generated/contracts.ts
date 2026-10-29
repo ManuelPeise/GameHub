@@ -63,6 +63,8 @@ export type SessionDto = {
   seats: SeatDto[];
   inviteCode?: string | null;
   mySeatId?: string | null;
+  currentSeatId?: string | null;
+  turnDeadline?: string | null;
 };
 
 export type SubmitSessionActionRequest = {
