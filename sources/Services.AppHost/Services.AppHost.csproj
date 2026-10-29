@@ -1,7 +1,19 @@
-<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Aspire.AppHost.Sdk/13.6.4">
 
   <PropertyGroup>
     <OutputType>Exe</OutputType>
+    <!-- Aspire stores the generated PostgreSQL password here (user secrets, not in the repo). -->
+    <UserSecretsId>1c0194d5-9479-4ac1-a837-0e420d7c74c6</UserSecretsId>
   </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Aspire.Hosting.JavaScript" />
+    <PackageReference Include="Aspire.Hosting.PostgreSQL" />
+    <PackageReference Include="CommunityToolkit.Aspire.Hosting.MailPit" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Services.Api\Services.Api.csproj" />
+  </ItemGroup>
 
 </Project>
