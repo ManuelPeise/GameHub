@@ -7,6 +7,9 @@ public static class AccountRules
     public const int DisplayNameMinLength = 3;
     public const int DisplayNameMaxLength = 32;
 
+    /// <summary>Display name of a deleted (pseudonymized) account in game history and results.</summary>
+    public const string DeletedUserDisplayName = "Gelöschter Spieler";
+
     /// <summary>Password rules in the language of the UI (German).</summary>
     public static IReadOnlyList<string> PasswordRuleTexts { get; } =
     [

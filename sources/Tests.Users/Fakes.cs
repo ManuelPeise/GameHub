@@ -66,6 +66,21 @@ internal sealed class FakeAccountStore : IUserAccountStore
     public Task<IReadOnlyList<string>?> EnableTwoFactorAsync(Guid userId, string code, CancellationToken cancellationToken) =>
         Task.FromResult(RecoveryCodes);
 
+    public bool PasswordValid { get; set; } = true;
+
+    public bool PseudonymizeResult { get; set; } = true;
+
+    public List<Guid> Pseudonymized { get; } = [];
+
+    public Task<bool> CheckPasswordAsync(Guid userId, string password, CancellationToken cancellationToken) =>
+        Task.FromResult(PasswordValid);
+
+    public Task<bool> PseudonymizeAsync(Guid userId, CancellationToken cancellationToken)
+    {
+        Pseudonymized.Add(userId);
+        return Task.FromResult(PseudonymizeResult);
+    }
+
     public Task SignOutAsync(CancellationToken cancellationToken)
     {
         SignOuts++;

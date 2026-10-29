@@ -29,6 +29,7 @@ builder.Services.AddScoped<RegistrationLogic>();
 builder.Services.AddScoped<LoginLogic>();
 builder.Services.AddScoped<AccountRecoveryLogic>();
 builder.Services.AddScoped<TwoFactorLogic>();
+builder.Services.AddScoped<AccountDeletionLogic>();
 
 builder.Services.AddRateLimiter(options =>
 {

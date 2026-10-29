@@ -40,6 +40,9 @@ const HomePage: React.FC = () => {
               Abmelden
             </button>
           </div>
+          <p className="account-links">
+            <a href={pagePaths.deleteAccount}>Konto löschen</a>
+          </p>
         </>
       ) : (
         <p className="account-links">

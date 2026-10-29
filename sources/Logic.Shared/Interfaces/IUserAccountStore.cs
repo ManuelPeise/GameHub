@@ -32,6 +32,16 @@ public interface IUserAccountStore
     /// </summary>
     Task<IReadOnlyList<string>?> EnableTwoFactorAsync(Guid userId, string code, CancellationToken cancellationToken);
 
+    /// <summary>Checks the password of an active account without signing in or counting failed attempts.</summary>
+    Task<bool> CheckPasswordAsync(Guid userId, string password, CancellationToken cancellationToken);
+
+    /// <summary>
+    /// Deletes all personal data of the account (name, e-mail, password, logins, two-factor data, roles)
+    /// and marks it as deleted. The row stays so that game history keeps its references; it then shows
+    /// as "Gelöschter Spieler". Returns false if the account does not exist or is already deleted.
+    /// </summary>
+    Task<bool> PseudonymizeAsync(Guid userId, CancellationToken cancellationToken);
+
     /// <summary>Removes the authentication cookie.</summary>
     Task SignOutAsync(CancellationToken cancellationToken);
 

@@ -44,6 +44,9 @@ public sealed record ResetPasswordRequest(Guid UserId, string Token, string NewP
 /// <summary>Response for requests that must not reveal whether an address exists.</summary>
 public sealed record MessageResponse(string Message);
 
+/// <summary>Request body of POST /api/account/delete: current password and explicit confirmation.</summary>
+public sealed record DeleteAccountRequest(string Password, bool Confirmed);
+
 /// <summary>Machine-readable reasons of a failed login (extension "code" of the 401 problem response).</summary>
 public static class LoginErrorCodes
 {

@@ -204,6 +204,61 @@ internal sealed class UserAccountStore(
         return [.. recoveryCodes ?? []];
     }
 
+    public async Task<bool> CheckPasswordAsync(Guid userId, string password, CancellationToken cancellationToken)
+    {
+        var user = await userManager.FindByIdAsync(userId.ToString());
+        return user is not null && user.Status == UserStatus.Active && await userManager.CheckPasswordAsync(user, password);
+    }
+
+    public async Task<bool> PseudonymizeAsync(Guid userId, CancellationToken cancellationToken)
+    {
+        var user = await userManager.FindByIdAsync(userId.ToString());
+        if (user is null || user.Status == UserStatus.Deleted)
+        {
+            return false;
+        }
+
+        // External logins, stored tokens (authenticator key, recovery codes), claims and roles.
+        foreach (var login in await userManager.GetLoginsAsync(user))
+        {
+            await userManager.RemoveLoginAsync(user, login.LoginProvider, login.ProviderKey);
+        }
+
+        await userManager.RemoveAuthenticationTokenAsync(user, "[AspNetUserStore]", "AuthenticatorKey");
+        await userManager.RemoveAuthenticationTokenAsync(user, "[AspNetUserStore]", "RecoveryCodes");
+        await userManager.RemoveClaimsAsync(user, await userManager.GetClaimsAsync(user));
+        await userManager.RemoveFromRolesAsync(user, await userManager.GetRolesAsync(user));
+
+        // Personal data and credentials. User name and e-mail must stay unique and valid for the Identity
+        // validators, so both get a placeholder without personal data (".invalid" is a reserved domain).
+        user.UserName = $"deleted-{user.Id:N}";
+        user.Email = $"deleted-{user.Id:N}@deleted.invalid";
+        user.EmailConfirmed = false;
+        user.PhoneNumber = null;
+        user.PhoneNumberConfirmed = false;
+        user.PasswordHash = null;
+        user.TwoFactorEnabled = false;
+        user.LockoutEnd = null;
+        user.AccessFailedCount = 0;
+        user.LastLoginAt = null;
+        user.DisplayName = AccountRules.DeletedUserDisplayName;
+        user.Status = UserStatus.Deleted;
+
+        // Normalized names and a new security stamp: existing cookies of the account become invalid.
+        await userManager.UpdateNormalizedUserNameAsync(user);
+        await userManager.UpdateNormalizedEmailAsync(user);
+        await userManager.UpdateSecurityStampAsync(user);
+
+        var result = await userManager.UpdateAsync(user);
+        if (!result.Succeeded)
+        {
+            throw new InvalidOperationException(
+                $"Account {user.Id} could not be pseudonymized: {string.Join("; ", result.Errors.Select(error => error.Code))}");
+        }
+
+        return true;
+    }
+
     public Task SignOutAsync(CancellationToken cancellationToken) => signInManager.SignOutAsync();
 
     public async Task<AccountInfo?> FindAsync(Guid userId, CancellationToken cancellationToken)

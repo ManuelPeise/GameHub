@@ -131,3 +131,7 @@
   background: #fff; /* QR codes need a light background, also in dark mode */
   border-radius: 6px;
 }
+
+.account-form button.account-danger {
+  background: var(--account-error);
+}

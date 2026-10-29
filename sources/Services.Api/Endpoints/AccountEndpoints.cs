@@ -44,6 +44,10 @@ public static class AccountEndpoints
             .RequireAuthorization(AuthorizationPolicies.Player)
             .RequireRateLimiting(LoginRateLimitPolicy);
 
+        account.MapPost("/delete", DeleteAccountAsync)
+            .RequireAuthorization(AuthorizationPolicies.Player)
+            .RequireRateLimiting(LoginRateLimitPolicy);
+
         account.MapPost("/forgot-password", ForgotPasswordAsync).RequireRateLimiting(LoginRateLimitPolicy);
         account.MapPost("/reset-password", ResetPasswordAsync).RequireRateLimiting(LoginRateLimitPolicy);
         account.MapPost("/resend-confirmation", ResendConfirmationAsync).RequireRateLimiting(LoginRateLimitPolicy);
@@ -187,6 +191,35 @@ public static class AccountEndpoints
                 ["code"] = ["Der Code ist ungültig. Bitte gib den aktuellen Code aus der Authenticator-App ein."],
             })
             : Results.Ok(new RecoveryCodesResponse(recoveryCodes));
+    }
+
+    private static async Task<IResult> DeleteAccountAsync(
+        DeleteAccountRequest request,
+        AccountDeletionLogic deletion,
+        ClaimsPrincipal principal,
+        CancellationToken cancellationToken)
+    {
+        var userId = GetUserId(principal);
+        if (userId is null)
+        {
+            return Results.Unauthorized();
+        }
+
+        var result = await deletion.DeleteOwnAccountAsync(userId.Value, request, cancellationToken);
+
+        return result switch
+        {
+            AccountDeletionResult.Deleted => Results.NoContent(),
+            AccountDeletionResult.NotConfirmed => Results.ValidationProblem(new Dictionary<string, string[]>
+            {
+                ["confirmed"] = ["Bitte bestätige, dass dein Konto gelöscht werden soll."],
+            }),
+            AccountDeletionResult.WrongPassword => Results.ValidationProblem(new Dictionary<string, string[]>
+            {
+                ["password"] = ["Das Passwort ist falsch."],
+            }),
+            _ => Results.Unauthorized(),
+        };
     }
 
     private static async Task<IResult> ForgotPasswordAsync(

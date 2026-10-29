@@ -67,6 +67,11 @@ export type ResetPasswordRequest = {
   newPassword: string;
 };
 
+export type DeleteAccountRequest = {
+  password: string;
+  confirmed: boolean;
+};
+
 export type MessageResponse = {
   message: string;
 };
@@ -91,6 +96,7 @@ export const accountUrls = {
   twoFactor: "/api/account/two-factor",
   enableTwoFactor: "/api/account/two-factor/enable",
   adminStatus: "/api/admin/status",
+  deleteAccount: "/api/account/delete",
   forgotPassword: "/api/account/forgot-password",
   resetPassword: "/api/account/reset-password",
   resendConfirmation: "/api/account/resend-confirmation",
@@ -105,4 +111,5 @@ export const pagePaths = {
   resetPassword: "/reset-password",
   emailConfirmed: "/email-confirmed",
   admin: "/admin",
+  deleteAccount: "/account/delete",
 } as const;

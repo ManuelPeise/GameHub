@@ -1,5 +1,6 @@
 import React from "react";
 import { pagePaths } from "../api/account";
+import DeleteAccountPage from "./account/DeleteAccountPage";
 import EmailConfirmedPage from "./account/EmailConfirmedPage";
 import ForgotPasswordPage from "./account/ForgotPasswordPage";
 import LoginPage from "./account/LoginPage";
@@ -21,6 +22,8 @@ const App: React.FC = () => {
       return <ResetPasswordPage />;
     case pagePaths.emailConfirmed:
       return <EmailConfirmedPage />;
+    case pagePaths.deleteAccount:
+      return <DeleteAccountPage />;
     case pagePaths.admin:
       return <AdminPage />;
     default:
