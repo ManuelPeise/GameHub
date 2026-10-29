@@ -1,4 +1,4 @@
-// Local development orchestration: starts PostgreSQL, Mailpit, Services.Api and Web.App together
+// Local development orchestration: starts PostgreSQL, Mailpit, the migration, Services.Api and Web.App
 // and shows their logs and traces in the Aspire dashboard.
 
 var builder = DistributedApplication.CreateBuilder(args);
@@ -15,9 +15,16 @@ var database = postgres.AddDatabase("gamehub");
 // Catches all outgoing mails in development (web UI in the dashboard).
 var mailpit = builder.AddMailPit("mailpit");
 
+// Applies pending EF Core migrations once, before the API starts (never at API start, see CLAUDE.md).
+var migrate = builder.AddProject<Projects.Services_DbTools>("migrate")
+    .WithArgs("migrate")
+    .WithReference(database)
+    .WaitFor(database);
+
 var api = builder.AddProject<Projects.Services_Api>("api")
     .WithReference(database)
     .WaitFor(database)
+    .WaitForCompletion(migrate)
     .WithReference(mailpit)
     .WaitFor(mailpit)
     .WithHttpHealthCheck("/health");

@@ -51,7 +51,7 @@ Die übrigen Projekte werden mit ihren User Stories angelegt (Zuordnung im Konze
 ## Technologie
 
 .NET 10, ASP.NET Core, SignalR, EF Core mit PostgreSQL (Npgsql, JSON als `jsonb`),
-ASP.NET Core Identity, Serilog, Aspire (lokale Orchestrierung, Compose-Erzeugung),
+ASP.NET Core Identity, eigener Datenbank-Logging-Provider (Microsoft.Extensions.Logging), Aspire (lokale Orchestrierung, Compose-Erzeugung),
 React mit TypeScript (strict) und Vite, Playwright, Docker Compose.
 Kein ML.NET, keine externen KI-APIs.
 

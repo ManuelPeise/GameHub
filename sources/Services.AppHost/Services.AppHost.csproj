@@ -14,6 +14,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Services.Api\Services.Api.csproj" />
+    <ProjectReference Include="..\Services.DbTools\Services.DbTools.csproj" />
   </ItemGroup>
 
 </Project>
