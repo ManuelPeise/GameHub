@@ -19,6 +19,11 @@ COPY sources/ ./
 RUN dotnet publish Services.Api/Services.Api.csproj --configuration Release --output /out/api /p:UseAppHost=false \
  && dotnet publish Services.DbTools/Services.DbTools.csproj --configuration Release --output /out/dbtools /p:UseAppHost=false
 
+# EF Core migration bundle (US-030): applies migrations without SDK and without starting the app.
+RUN dotnet tool restore \
+ && dotnet ef migrations bundle --project Data.Database --startup-project Data.Database \
+      --configuration Release --output /out/efbundle --force
+
 # 3) Runtime with PostgreSQL client tools (pg_dump/pg_restore for backups, US-027)
 FROM mcr.microsoft.com/dotnet/aspnet:${DOTNET_VERSION} AS final
 RUN apt-get update \
@@ -29,6 +34,8 @@ WORKDIR /app
 COPY --from=build /out/api ./
 COPY --from=build /out/dbtools ./dbtools/
 COPY --from=web /src/Web.App/dist ./wwwroot/
+COPY --from=build /out/efbundle ./efbundle
+COPY --chmod=755 docker/migrate.sh ./migrate.sh
 
 # Volumes for data protection keys (sign-ins survive updates) and backups.
 RUN mkdir -p /keys /backups && chown "$APP_UID" /keys /backups

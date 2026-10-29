@@ -39,8 +39,16 @@ services:
   gamehub-migrate:
     image: *image
     build: *build
-    entrypoint: ["dotnet", "dbtools/Services.DbTools.dll", "migrate"]
-    environment: *app-environment
+    entrypoint: ["/app/migrate.sh"]
+    environment:
+      <<: *app-environment
+      # For pg_dump (backup before Live migrations).
+      PGHOST: gamehub-db
+      PGDATABASE: gamehub
+      PGUSER: gamehub
+      PGPASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD fehlt in docker/live.env}
+    volumes:
+      - gamehub-backups:/backups
     depends_on:
       gamehub-db:
         condition: service_healthy

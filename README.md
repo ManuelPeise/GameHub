@@ -85,6 +85,14 @@ dotnet test GameHubApp.slnx
 
 Frontend: in `sources/Web.App` `npm run build` und `npm run lint`.
 
+Integrationstests gegen PostgreSQL (`Tests.Data`) laufen nur, wenn `GAMEHUB_TEST_POSTGRES` gesetzt ist; sonst werden
+sie übersprungen. Jeder Testlauf legt eine eigene Datenbank an, migriert sie und löscht sie danach:
+
+```
+$env:GAMEHUB_TEST_POSTGRES = "Host=localhost;Port=5432;Username=postgres;Password=<passwort>"
+dotnet test Tests.Data
+```
+
 TypeScript-Typen aus `Shared.Models` neu erzeugen (der Test in `Tests.Shared` schlägt fehl, wenn sie veraltet sind):
 
 ```
@@ -100,7 +108,7 @@ Testing und Live laufen als getrennte Docker-Compose-Stacks (eigene Projektnamen
 | Dienst | Aufgabe |
 | --- | --- |
 | `gamehub-db` | PostgreSQL 17, nur im internen Netz erreichbar, Daten im Volume `gamehub-db-data` |
-| `gamehub-migrate` | führt ausstehende Migrationen aus und beendet sich; die App startet nur, wenn das gelingt |
+| `gamehub-migrate` | führt ausstehende Migrationen mit dem EF-Core-Migrationsbundle aus und beendet sich; in Live vorher automatisch ein Backup (`/backups/gamehub-PreMigration-<Zeit>.dump`); die App startet nur, wenn beides gelingt |
 | `gamehub-app` | API mit eingebautem Frontend; Schlüssel (Anmeldungen) im Volume `gamehub-keys`, Backups in `gamehub-backups` |
 | `gamehub-mail` | nur Testing: Mailpit, alle E-Mails landen im Web-UI (Standard: http://localhost:8026) |
 
@@ -136,9 +144,10 @@ Live funktioniert gleich mit `docker/live.env` und `docker/compose.live.yaml` (S
 | --- | --- |
 | Zeilenenden | keine CRLF-Dateien im Repository (außer `*.cmd`, `*.bat`, `*.sln`) |
 | .NET Build und Tests | Build aller .NET-Projekte (Release), alle `Tests.*` inkl. Architektur- und Vertragstests; Ergebnisse als Artefakt `test-results` |
+| Integrationstests (PostgreSQL) | `Tests.Data` gegen einen PostgreSQL-17-Dienst: Migrationen vollständig, Constraints, Repository |
 | Frontend Lint, Typprüfung und Build | `npm ci`, `npm run lint`, `npm run build` (inkl. `tsc -b`) |
 | Docker-Image | nur nach Push auf `Master` und grünen Checks: baut `ghcr.io/manuelpeise/gamehub-app` mit den Tags `latest` und `sha-<commit>` |
 
 Damit ein Pull Request bei Fehlern nicht gemergt werden kann, einmalig in GitHub einrichten:
 Settings → Branches → Branch protection rule für `Master` → „Require status checks to pass before merging“ →
-die drei Checks `Zeilenenden`, `.NET Build und Tests` und `Frontend Lint, Typprüfung und Build` auswählen.
+die Checks `Zeilenenden`, `.NET Build und Tests`, `Integrationstests (PostgreSQL)` und `Frontend Lint, Typprüfung und Build` auswählen.

@@ -2,6 +2,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Data.Database\Data.Database.csproj" />
+    <ProjectReference Include="..\Data.DataAccessor\Data.DataAccessor.csproj" />
   </ItemGroup>
 
 </Project>
