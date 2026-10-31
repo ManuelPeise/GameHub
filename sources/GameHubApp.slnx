@@ -15,6 +15,7 @@
     <Project Path="Logic.Administration/Logic.Administration.csproj" />
     <Project Path="Logic.Core/Logic.Core.csproj" />
     <Project Path="Logic.Kniffel/Logic.Kniffel.csproj" />
+    <Project Path="Logic.Muehle/Logic.Muehle.csproj" />
     <Project Path="Logic.Sessions/Logic.Sessions.csproj" />
     <Project Path="Logic.Shared/Logic.Shared.csproj" Id="daab70fb-f4dc-452b-8ce6-5d6e9325b18f" />
     <Project Path="Logic.TicTacToe/Logic.TicTacToe.csproj" />
@@ -32,6 +33,7 @@
     <Project Path="Tests.Data/Tests.Data.csproj" />
     <Project Path="Tests.Integration/Tests.Integration.csproj" />
     <Project Path="Tests.Kniffel/Tests.Kniffel.csproj" />
+    <Project Path="Tests.Muehle/Tests.Muehle.csproj" />
     <Project Path="Tests.Sessions/Tests.Sessions.csproj" />
     <Project Path="Tests.Shared/Tests.Shared.csproj" />
     <Project Path="Tests.TicTacToe/Tests.TicTacToe.csproj" />

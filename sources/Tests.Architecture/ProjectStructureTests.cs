@@ -11,7 +11,7 @@ public sealed partial class ProjectStructureTests
 {
     private const string TestPrefix = "Tests.";
 
-    private static readonly string[] GameProjects = ["Logic.TicTacToe", "Logic.Kniffel"];
+    private static readonly string[] GameProjects = ["Logic.TicTacToe", "Logic.Kniffel", "Logic.Muehle"];
 
     private static readonly string[] AllLogicProjects =
     [
@@ -34,6 +34,7 @@ public sealed partial class ProjectStructureTests
         ["Logic.Core"] = [],
         ["Logic.TicTacToe"] = ["Logic.Core"],
         ["Logic.Kniffel"] = ["Logic.Core"],
+        ["Logic.Muehle"] = ["Logic.Core"],
         ["Logic.Shared"] = ["Shared.Models"],
         ["Logic.Sessions"] = ApplicationLogicReferences,
         ["Logic.Users"] = ApplicationLogicReferences,
