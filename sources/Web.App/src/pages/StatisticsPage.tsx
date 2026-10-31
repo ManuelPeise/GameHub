@@ -1,3 +1,4 @@
+import { alpha, type Theme } from "@mui/material/styles";
 import React from "react";
 import Alert from "@mui/material/Alert";
 import Avatar from "@mui/material/Avatar";
@@ -152,7 +153,7 @@ const StatisticsPage: React.FC = () => {
                 key={index}
                 divider
                 disableGutters
-                sx={{ bgcolor: entry.isMe ? "rgba(157, 123, 255, 0.08)" : undefined, borderRadius: 2, px: 1 }}
+                sx={{ bgcolor: entry.isMe ? ((t: Theme) => alpha(t.palette.primary.main, 0.1)) : undefined, borderRadius: 2, px: 1 }}
               >
                 <ListItemAvatar sx={{ minWidth: 48 }}>
                   <Avatar sx={{ width: 34, height: 34, fontWeight: 800, bgcolor: medal(entry.rank) ?? "background.default", color: medal(entry.rank) ? "#111" : "text.primary" }}>
@@ -177,7 +178,7 @@ const StatisticsPage: React.FC = () => {
         <SectionCard title="Höchste Punktzahlen" icon={<StarOutline color="secondary" />}>
           <List disablePadding>
             {board.highScores.map((score, index) => (
-              <ListItem key={index} divider disableGutters sx={{ bgcolor: score.isMe ? "rgba(157, 123, 255, 0.08)" : undefined, borderRadius: 2, px: 1 }}>
+              <ListItem key={index} divider disableGutters sx={{ bgcolor: score.isMe ? ((t: Theme) => alpha(t.palette.primary.main, 0.1)) : undefined, borderRadius: 2, px: 1 }}>
                 <ListItemAvatar sx={{ minWidth: 48 }}>
                   <Avatar sx={{ width: 34, height: 34, fontWeight: 800, bgcolor: medal(score.rank) ?? "background.default", color: medal(score.rank) ? "#111" : "text.primary" }}>
                     {score.rank}

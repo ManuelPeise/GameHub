@@ -51,7 +51,7 @@ const Die: React.FC<{ value: number; held: boolean }> = ({ value, held }) => (
           width: "70%",
           aspectRatio: "1",
           borderRadius: "50%",
-          bgcolor: pipLayout[value]?.includes(index) ? (held ? "#1b1036" : "#1c1f2a") : "transparent",
+          bgcolor: pipLayout[value]?.includes(index) ? (held ? "#ffffff" : "#2b2250") : "transparent",
         }}
       />
     ))}
@@ -171,9 +171,9 @@ const KniffelGame: React.FC<KniffelGameProps> = ({ session, onChanged }) => {
                       maxWidth: 72,
                       aspectRatio: "1",
                       borderRadius: 2.5,
-                      bgcolor: die === 0 ? "action.hover" : isHeld ? "primary.main" : "#f4f1ea",
+                      bgcolor: die === 0 ? "action.hover" : isHeld ? "primary.main" : "#ffffff",
                       border: 3,
-                      borderColor: isHeld ? "primary.light" : "transparent",
+                      borderColor: isHeld ? "primary.dark" : "divider",
                       transform: isHeld ? "translateY(-6px)" : "none",
                       boxShadow: die === 0 ? "none" : 3,
                       transition: "transform 120ms, background-color 120ms",

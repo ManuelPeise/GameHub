@@ -1,3 +1,4 @@
+import { alpha, type Theme } from "@mui/material/styles";
 import React from "react";
 import Chip from "@mui/material/Chip";
 import Paper from "@mui/material/Paper";
@@ -38,7 +39,7 @@ const KniffelSheetTable: React.FC<KniffelSheetTableProps> = ({ state, seats, myS
   const legal = onScore && mySheet ? legalCategories(mySheet, state.dice) : [];
 
   const sumRow = (label: string, value: (order: number) => number, strong = false) => (
-    <TableRow sx={{ "& td, & th": { fontWeight: strong ? 800 : 600, bgcolor: strong ? "rgba(157, 123, 255, 0.08)" : undefined } }}>
+    <TableRow sx={{ "& td, & th": { fontWeight: strong ? 800 : 600, bgcolor: strong ? ((t: Theme) => alpha(t.palette.primary.main, 0.1)) : undefined } }}>
       <TableCell component="th" scope="row" sx={stickyCell}>
         {label}
       </TableCell>

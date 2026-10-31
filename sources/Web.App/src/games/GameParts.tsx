@@ -1,3 +1,4 @@
+import { alpha, type Theme } from "@mui/material/styles";
 import React from "react";
 import { useNavigate } from "react-router";
 import Alert from "@mui/material/Alert";
@@ -36,7 +37,7 @@ export const GameStatusBar: React.FC<StatusBarProps> = ({ text, busy, highlight,
       gap: 1.5,
       flexWrap: "wrap",
       borderColor: highlight ? "primary.main" : "divider",
-      bgcolor: highlight ? "rgba(157, 123, 255, 0.08)" : "background.paper",
+      bgcolor: highlight ? ((t: Theme) => alpha(t.palette.primary.main, 0.1)) : "background.paper",
     }}
   >
     {busy && <CircularProgress size={18} />}

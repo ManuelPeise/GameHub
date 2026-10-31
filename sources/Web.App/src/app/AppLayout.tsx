@@ -127,17 +127,21 @@ const AppLayout: React.FC = () => {
     <Box sx={{ display: "flex", minHeight: "100vh" }}>
       <AppBar
         position="fixed"
-        color="inherit"
         elevation={0}
-        sx={{ zIndex: (t) => t.zIndex.drawer + 1, borderBottom: 1, borderColor: "divider", bgcolor: "background.paper" }}
+        sx={{
+          zIndex: (t) => t.zIndex.drawer + 1,
+          color: "#ffffff",
+          background: "linear-gradient(90deg, #6c4cff 0%, #9b5cff 55%, #ff6fb1 100%)",
+          boxShadow: "0 4px 0 rgba(43, 34, 80, 0.12)",
+        }}
       >
         <Toolbar sx={{ gap: 1, px: { xs: 1, sm: 2 } }}>
           {!isDesktop && (
-            <IconButton edge="start" aria-label="Menü öffnen" onClick={() => setMobileOpen(true)}>
+            <IconButton edge="start" color="inherit" aria-label="Menü öffnen" onClick={() => setMobileOpen(true)}>
               <MenuIcon />
             </IconButton>
           )}
-          <Button href={pagePaths.home} color="inherit" startIcon={<Casino color="primary" />} sx={{ fontSize: "1.15rem" }}>
+          <Button href={pagePaths.home} color="inherit" startIcon={<Casino sx={{ fontSize: "1.6rem !important" }} />} sx={{ fontSize: "1.3rem", fontWeight: 900, letterSpacing: 0.5 }}>
             GameHub
           </Button>
           {info?.showBanner && (
@@ -150,11 +154,11 @@ const AppLayout: React.FC = () => {
           <Box sx={{ flexGrow: 1 }} />
           {user === null && (
             <>
-              <Button href={pagePaths.login} startIcon={<Login />}>
+              <Button href={pagePaths.login} color="inherit" startIcon={<Login />}>
                 Anmelden
               </Button>
               {isDesktop && (
-                <Button href={pagePaths.register} variant="contained">
+                <Button href={pagePaths.register} variant="contained" color="secondary">
                   Registrieren
                 </Button>
               )}
@@ -164,7 +168,7 @@ const AppLayout: React.FC = () => {
             <>
               <Tooltip title="Konto">
                 <IconButton onClick={(event) => setAccountAnchor(event.currentTarget)} aria-label="Konto-Menü">
-                  <Avatar sx={{ width: 34, height: 34, bgcolor: "primary.main", fontSize: "0.95rem" }}>
+                  <Avatar sx={{ width: 34, height: 34, bgcolor: "secondary.main", fontSize: "0.95rem", fontWeight: 900, border: "2px solid #ffffff" }}>
                     {user.displayName.slice(0, 1).toUpperCase()}
                   </Avatar>
                 </IconButton>

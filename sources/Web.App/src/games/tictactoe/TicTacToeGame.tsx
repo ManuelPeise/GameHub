@@ -1,3 +1,4 @@
+import { alpha, type Theme } from "@mui/material/styles";
 import React from "react";
 import Alert from "@mui/material/Alert";
 import Box from "@mui/material/Box";
@@ -126,7 +127,7 @@ const TicTacToeGame: React.FC<TicTacToeGameProps> = ({ session, onChanged }) => 
       <Box
         role="grid"
         aria-label="Spielfeld"
-        sx={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: { xs: 1, sm: 1.5 }, width: "100%", aspectRatio: "1" }}
+        sx={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gridTemplateRows: "repeat(3, minmax(0, 1fr))", gap: { xs: 1, sm: 1.5 }, width: "100%", aspectRatio: "1" }}
       >
         {[...state.board].map((cell, index) => {
           const isEmpty = cell === "-";
@@ -139,15 +140,20 @@ const TicTacToeGame: React.FC<TicTacToeGameProps> = ({ session, onChanged }) => 
               disabled={!isMyTurn || !isEmpty || isSubmitting}
               aria-label={`Feld ${cellNames[index]}, ${isEmpty ? "leer" : cell}`}
               sx={{
-                borderRadius: 3,
-                border: 2,
+                minWidth: 0,
+                minHeight: 0,
+                overflow: "hidden",
+                lineHeight: 1,
+                borderRadius: 4,
+                border: 3,
+                boxShadow: "0 4px 0 rgba(43, 34, 80, 0.08)",
                 borderColor: isWinning ? "secondary.main" : "divider",
-                bgcolor: isWinning ? "rgba(255, 183, 77, 0.15)" : "background.paper",
+                bgcolor: isWinning ? ((t: Theme) => alpha(t.palette.secondary.main, 0.18)) : "background.paper",
                 fontSize: "clamp(2.5rem, 14vw, 4.5rem)",
-                fontWeight: 800,
+                fontWeight: 900,
                 color: cell === "X" ? "primary.main" : "secondary.main",
                 transition: "border-color 120ms, background-color 120ms",
-                "&:not(.Mui-disabled):hover": { borderColor: "primary.main", bgcolor: "rgba(157, 123, 255, 0.08)" },
+                "&:not(.Mui-disabled):hover": { borderColor: "primary.main", bgcolor: ((t: Theme) => alpha(t.palette.primary.main, 0.1)) },
                 "&.Mui-focusVisible": { borderColor: "primary.main" },
               }}
             >
