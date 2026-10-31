@@ -131,6 +131,7 @@ public sealed class AppSettings : IAppSettings
         Require(Security.LockoutMaxFailedAttempts > 0, "Security:LockoutMaxFailedAttempts", "must be greater than 0");
         Require(Security.LockoutDuration > TimeSpan.Zero, "Security:LockoutDuration", "must be greater than 0");
         Require(Security.AccountTokenLifetime > TimeSpan.Zero, "Security:AccountTokenLifetime", "must be greater than 0");
+        Require(Security.SessionValidationInterval >= TimeSpan.Zero, "Security:SessionValidationInterval", "must not be negative");
         Require(!Environment.IsLive || Security.RequireAdminTwoFactor, "Security:RequireAdminTwoFactor",
             "must be true in Live");
 

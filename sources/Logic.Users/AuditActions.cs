@@ -15,6 +15,8 @@ public static class AuditActions
 
     public const string TwoFactorEnabled = "Account.TwoFactorEnabled";
     public const string AccountDeleted = "Account.Deleted";
+    public const string AccountLocked = "Account.Locked";
+    public const string AccountUnlocked = "Account.Unlocked";
 
     public const string PasswordResetRequested = "Account.PasswordResetRequested";
     public const string PasswordReset = "Account.PasswordReset";

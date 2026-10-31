@@ -1,4 +1,7 @@
+using System.Security.Claims;
+using Logic.Users;
 using Services.Api.Authorization;
+using Shared.Models.Administration;
 
 namespace Services.Api.Endpoints;
 
@@ -10,9 +13,51 @@ public static class AdminEndpoints
         var admin = app.MapGroup("/api/admin")
             .RequireAuthorization(AuthorizationPolicies.Administrator);
 
-        // Access check for Web.App; the admin functions follow with US-025 to US-028.
+        // Access check for Web.App.
         admin.MapGet("/status", () => Results.Ok(new { access = true }));
+
+        // Player administration (US-025).
+        admin.MapGet("/users", async (
+                string? query,
+                bool? includeDeleted,
+                int? skip,
+                int? take,
+                PlayerAdministrationLogic logic,
+                ClaimsPrincipal principal,
+                CancellationToken cancellationToken) =>
+            AdminId(principal) is { } adminId
+                ? Results.Ok(await logic.SearchAsync(adminId, query, includeDeleted ?? false, skip ?? 0, take ?? 25, cancellationToken))
+                : Results.Unauthorized());
+
+        admin.MapPost("/users/{id:guid}/lock", async (Guid id, PlayerAdministrationLogic logic, ClaimsPrincipal principal, CancellationToken cancellationToken) =>
+            AdminId(principal) is { } adminId ? ToResult(await logic.LockAsync(adminId, id, cancellationToken)) : Results.Unauthorized());
+
+        admin.MapPost("/users/{id:guid}/unlock", async (Guid id, PlayerAdministrationLogic logic, ClaimsPrincipal principal, CancellationToken cancellationToken) =>
+            AdminId(principal) is { } adminId ? ToResult(await logic.UnlockAsync(adminId, id, cancellationToken)) : Results.Unauthorized());
+
+        admin.MapPost("/users/{id:guid}/delete", async (
+                Guid id,
+                AdminDeleteUserRequest request,
+                PlayerAdministrationLogic logic,
+                ClaimsPrincipal principal,
+                CancellationToken cancellationToken) =>
+            AdminId(principal) is { } adminId
+                ? ToResult(await logic.DeleteAsync(adminId, id, request.Confirmed, cancellationToken))
+                : Results.Unauthorized());
 
         return app;
     }
+
+    private static IResult ToResult(AdminActionResult result) => result switch
+    {
+        AdminActionResult.Done => Results.NoContent(),
+        AdminActionResult.NotFound => Results.NotFound(new { error = "Der Spieler wurde nicht gefunden." }),
+        AdminActionResult.Self => Results.Conflict(new { error = "Das eigene Konto kann hier nicht gesperrt oder gelöscht werden." }),
+        AdminActionResult.LastAdministrator => Results.Conflict(new { error = "Der letzte aktive Administrator kann nicht gesperrt oder gelöscht werden." }),
+        AdminActionResult.NotConfirmed => Results.UnprocessableEntity(new { error = "Bitte bestätige das Löschen." }),
+        _ => Results.Conflict(new { error = "Diese Aktion ist für den Spieler gerade nicht möglich." }),
+    };
+
+    private static Guid? AdminId(ClaimsPrincipal principal) =>
+        Guid.TryParse(principal.FindFirstValue(ClaimTypes.NameIdentifier), out var id) ? id : null;
 }

@@ -94,6 +94,12 @@ public static class UserAccountsRegistration
             .AddDefaultTokenProviders();
 
         builder.Services.AddScoped<IUserAccountStore, UserAccountStore>();
+        builder.Services.AddScoped<IUserAdministrationStore, UserAdministrationStore>();
+
+        // How often a sign-in cookie is checked against the account (security stamp): a locked or deleted
+        // player is signed out after at most this time.
+        builder.Services.Configure<SecurityStampValidatorOptions>(options =>
+            options.ValidationInterval = security.SessionValidationInterval);
         builder.Services.AddScoped<AccountSeeder>();
         builder.Services.AddScoped<IAuditLog, AuditLog>();
         builder.Services.AddScoped<IEmailSender, SmtpEmailSender>();

@@ -98,6 +98,11 @@ public sealed class SecuritySettings
     /// </summary>
     public string? DataProtectionKeysPath { get; set; }
 
+    /// <summary>
+    /// How often sign-ins are checked against the account; locking a player takes effect after at most this time.
+    /// </summary>
+    public TimeSpan SessionValidationInterval { get; set; } = TimeSpan.FromSeconds(30);
+
     /// <summary>Registrations per client IP and hour.</summary>
     public int RegistrationRateLimit { get; set; } = 5;
 

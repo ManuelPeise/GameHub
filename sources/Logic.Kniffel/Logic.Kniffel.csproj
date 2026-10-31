@@ -5,8 +5,11 @@
   </ItemGroup>
 
   <ItemGroup>
-    <!-- Expected values under optimal play, see Ai/KniffelValueTable.cs (generated, gzip). -->
-    <EmbeddedResource Include="Ai\kniffel-values.bin.gz" LogicalName="Logic.Kniffel.Ai.kniffel-values.bin.gz" />
+    <!--
+      Expected values under optimal play, see Ai/KniffelValueTable.cs (generated, gzip).
+      WithCulture="false": otherwise MSBuild reads ".bin" as culture (Bini) and moves the file into a satellite assembly.
+    -->
+    <EmbeddedResource Include="Ai\kniffel-values.bin.gz" LogicalName="Logic.Kniffel.Ai.kniffel-values.bin.gz" WithCulture="false" />
   </ItemGroup>
 
 </Project>

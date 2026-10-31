@@ -86,3 +86,18 @@ public sealed record AuditRecord(
     Guid? UserId = null,
     string? Target = null,
     IReadOnlyDictionary<string, string>? Details = null);
+
+/// <summary>An account as seen by the player administration.</summary>
+public sealed record UserAdminRecord(
+    Guid Id,
+    string DisplayName,
+    string Email,
+    global::Shared.Models.Administration.AccountStatus Status,
+    IReadOnlyList<string> Roles,
+    bool EmailConfirmed,
+    bool TwoFactorEnabled,
+    DateTimeOffset CreatedAt,
+    DateTimeOffset? LastLoginAt);
+
+/// <summary>One page of accounts and the total number of matches.</summary>
+public sealed record UserAdminPage(IReadOnlyList<UserAdminRecord> Items, int Total);

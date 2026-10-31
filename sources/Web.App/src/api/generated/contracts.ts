@@ -199,3 +199,27 @@ export type StatisticsRowDto = {
   averageScore?: number | null;
   bestScore?: number | null;
 };
+
+export type AccountStatus = "Active" | "Locked" | "Deleted";
+
+export type AdminDeleteUserRequest = {
+  confirmed: boolean;
+};
+
+export type AdminUserDto = {
+  id: string;
+  displayName: string;
+  email: string;
+  status: AccountStatus;
+  roles: string[];
+  emailConfirmed: boolean;
+  twoFactorEnabled: boolean;
+  createdAt: string;
+  lastLoginAt?: string | null;
+  isMe: boolean;
+};
+
+export type AdminUserPageDto = {
+  items: AdminUserDto[];
+  total: number;
+};

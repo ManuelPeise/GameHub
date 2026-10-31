@@ -2,14 +2,12 @@ import React from "react";
 import { useNavigate } from "react-router";
 import Alert from "@mui/material/Alert";
 import Button from "@mui/material/Button";
-import Typography from "@mui/material/Typography";
-import AdminPanelSettingsOutlined from "@mui/icons-material/AdminPanelSettingsOutlined";
 import { ApiError, sendRequest } from "../../hooks/apiClient";
 import { accountUrls, pagePaths, roleNames, type CurrentUserResponse } from "../../api/account";
 import { useCurrentUser } from "../../app/CurrentUser";
 import Loading from "../../components/Loading";
 import Page from "../../components/Page";
-import SectionCard from "../../components/SectionCard";
+import PlayersPanel from "./PlayersPanel";
 import TwoFactorSetup from "./TwoFactorSetup";
 
 type State =
@@ -87,12 +85,7 @@ const AdminPage: React.FC = () => {
           Bitte melde dich erneut an und bestätige mit dem Code aus deiner Authenticator-App.
         </Alert>
       )}
-      {state.kind === "ready" && (
-        <SectionCard title="Übersicht" icon={<AdminPanelSettingsOutlined color="primary" />}>
-          <Typography>Angemeldet als {state.user.displayName} mit Zwei-Faktor-Anmeldung.</Typography>
-          <Typography color="text.secondary">Die Verwaltungsfunktionen folgen mit den nächsten Stories.</Typography>
-        </SectionCard>
-      )}
+      {state.kind === "ready" && <PlayersPanel />}
     </Page>
   );
 };
