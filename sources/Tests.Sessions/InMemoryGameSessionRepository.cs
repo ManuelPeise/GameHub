@@ -270,6 +270,19 @@ internal sealed class InMemoryGameSessionRepository : IGameSessionRepository
                 .Select(ToHistory),
         ]);
 
+    public Task<IReadOnlyList<HistoryRecord>> SearchGamesAsync(string? query, int skip, int take, CancellationToken cancellationToken) =>
+        Task.FromResult<IReadOnlyList<HistoryRecord>>(
+        [
+            .. _sessions.Values
+                .Where(s => s.Status != SessionStatus.Lobby)
+                .Where(s => string.IsNullOrEmpty(query)
+                    || s.Id.ToString() == query
+                    || s.Seats.Any(seat => seat.DisplayName.Contains(query, StringComparison.OrdinalIgnoreCase)))
+                .Skip(skip)
+                .Take(take)
+                .Select(ToHistory),
+        ]);
+
     public Task<HistoryRecord?> GetHistoryRecordAsync(Guid sessionId, CancellationToken cancellationToken) =>
         Task.FromResult(_sessions.TryGetValue(sessionId, out var session) ? ToHistory(session) : null);
 

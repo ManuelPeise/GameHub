@@ -7,6 +7,11 @@ import { accountUrls, pagePaths, roleNames, type CurrentUserResponse } from "../
 import { useCurrentUser } from "../../app/CurrentUser";
 import Loading from "../../components/Loading";
 import Page from "../../components/Page";
+import Tab from "@mui/material/Tab";
+import Tabs from "@mui/material/Tabs";
+import AppLogPanel from "./AppLogPanel";
+import AuditPanel from "./AuditPanel";
+import GamesPanel from "./GamesPanel";
 import PlayersPanel from "./PlayersPanel";
 import TwoFactorSetup from "./TwoFactorSetup";
 
@@ -22,6 +27,7 @@ type State =
 const AdminPage: React.FC = () => {
   const navigate = useNavigate();
   const { logout } = useCurrentUser();
+  const [tab, setTab] = React.useState(0);
   const [state, setState] = React.useState<State>({ kind: "loading" });
 
   const check = React.useCallback(async () => {
@@ -85,7 +91,20 @@ const AdminPage: React.FC = () => {
           Bitte melde dich erneut an und bestätige mit dem Code aus deiner Authenticator-App.
         </Alert>
       )}
-      {state.kind === "ready" && <PlayersPanel />}
+      {state.kind === "ready" && (
+        <>
+          <Tabs value={tab} onChange={(_, value: number) => setTab(value)} variant="scrollable" allowScrollButtonsMobile sx={{ mb: 2 }}>
+            <Tab label="Spieler" />
+            <Tab label="Anwendungslog" />
+            <Tab label="Audit-Log" />
+            <Tab label="Partien" />
+          </Tabs>
+          {tab === 0 && <PlayersPanel />}
+          {tab === 1 && <AppLogPanel />}
+          {tab === 2 && <AuditPanel />}
+          {tab === 3 && <GamesPanel />}
+        </>
+      )}
     </Page>
   );
 };

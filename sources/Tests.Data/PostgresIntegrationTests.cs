@@ -1,5 +1,6 @@
 using Data.Database;
 using Data.Database.Entities;
+using Data.DataAccessor.Administration;
 using Data.DataAccessor.Games;
 using Data.DataAccessor.Statistics;
 using Logic.Shared.Models;
@@ -209,5 +210,43 @@ public sealed class PostgresIntegrationTests(PostgresDatabase postgres) : Xunit.
         Xunit.Assert.Equal("player", row.DisplayName);
         Xunit.Assert.False(row.IsDeleted);
         Xunit.Assert.Empty(await store.GetResultsAsync(player, GameMode.Multiplayer, null, null, CancellationToken.None));
+    }
+
+    [Xunit.Fact]
+    public async Task AdminLogStore_FiltersAndPagesAppAndAuditLog()
+    {
+        await using var database = Context();
+        var user = await AddUserAsync(database, "suchbar");
+        for (var i = 0; i < 5; i++)
+        {
+            database.AppLog.Add(new AppLogEntry
+            {
+                Timestamp = Now.AddMinutes(i),
+                Level = i % 2 == 0 ? "Error" : "Information",
+                Category = "Tests",
+                Message = $"Nachricht {i}",
+            });
+            database.AuditEntries.Add(new AuditEntry
+            {
+                CreatedAt = Now.AddMinutes(i),
+                UserId = i < 3 ? user : null,
+                Action = i < 3 ? "Account.Locked" : "Account.Registered",
+                Result = "Success",
+            });
+        }
+
+        await database.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+        var store = new AdminLogStore(database);
+
+        var errors = await store.GetAppLogAsync(new AppLogFilter(null, null, "Warning", "Nachricht", null, 2), CancellationToken.None);
+        Xunit.Assert.Equal(new[] { "Nachricht 4", "Nachricht 2" }, errors.Items.Select(entry => entry.Message).ToArray());
+        Xunit.Assert.NotNull(errors.NextBeforeId);
+        var older = await store.GetAppLogAsync(new AppLogFilter(null, null, "Warning", "Nachricht", errors.NextBeforeId, 2), CancellationToken.None);
+        Xunit.Assert.Equal("Nachricht 0", Xunit.Assert.Single(older.Items).Message);
+        Xunit.Assert.Null(older.NextBeforeId);
+
+        var audit = await store.GetAuditLogAsync(new AuditFilter(null, null, "suchbar", "Locked", null, 10), CancellationToken.None);
+        Xunit.Assert.Equal(3, audit.Items.Count);
+        Xunit.Assert.All(audit.Items, entry => Xunit.Assert.Equal("suchbar", entry.UserName));
     }
 }

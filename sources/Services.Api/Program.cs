@@ -48,6 +48,7 @@ builder.Services.AddScoped<AccountRecoveryLogic>();
 builder.Services.AddScoped<TwoFactorLogic>();
 builder.Services.AddScoped<AccountDeletionLogic>();
 builder.Services.AddScoped<PlayerAdministrationLogic>();
+builder.Services.AddScoped<Logic.Administration.AdminLogLogic>();
 
 // Enums as names ("Lobby", "Running", ...) for HTTP and SignalR; the generated TypeScript types expect this.
 builder.Services.ConfigureHttpJsonOptions(options =>

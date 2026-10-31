@@ -60,6 +60,12 @@ public interface IGameSessionRepository
     /// <summary>Finished and aborted sessions of the user, newest first.</summary>
     Task<IReadOnlyList<HistoryRecord>> GetHistoryAsync(Guid userId, int skip, int take, CancellationToken cancellationToken);
 
+    /// <summary>
+    /// Admin search over all sessions except lobbies, newest first: <paramref name="query"/> is a session id or part
+    /// of a player's display name or e-mail address (empty = all).
+    /// </summary>
+    Task<IReadOnlyList<HistoryRecord>> SearchGamesAsync(string? query, int skip, int take, CancellationToken cancellationToken);
+
     /// <summary>History data (seats with results) of one session; null if it does not exist.</summary>
     Task<HistoryRecord?> GetHistoryRecordAsync(Guid sessionId, CancellationToken cancellationToken);
 

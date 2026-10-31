@@ -95,6 +95,7 @@ public static class UserAccountsRegistration
 
         builder.Services.AddScoped<IUserAccountStore, UserAccountStore>();
         builder.Services.AddScoped<IUserAdministrationStore, UserAdministrationStore>();
+        builder.Services.AddScoped<IAdminLogStore, Administration.AdminLogStore>();
 
         // How often a sign-in cookie is checked against the account (security stamp): a locked or deleted
         // player is signed out after at most this time.

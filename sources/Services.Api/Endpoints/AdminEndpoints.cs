@@ -1,4 +1,6 @@
 using System.Security.Claims;
+using Logic.Administration;
+using Logic.Sessions.History;
 using Logic.Users;
 using Services.Api.Authorization;
 using Shared.Models.Administration;
@@ -44,6 +46,37 @@ public static class AdminEndpoints
             AdminId(principal) is { } adminId
                 ? ToResult(await logic.DeleteAsync(adminId, id, request.Confirmed, cancellationToken))
                 : Results.Unauthorized());
+
+        // Logs and games (US-026).
+        admin.MapGet("/logs/app", async (
+                DateTimeOffset? from,
+                DateTimeOffset? to,
+                string? level,
+                string? text,
+                long? beforeId,
+                int? take,
+                AdminLogLogic logic,
+                CancellationToken cancellationToken) =>
+            Results.Ok(await logic.GetAppLogAsync(from, to, level, text, beforeId, take, cancellationToken)));
+
+        admin.MapGet("/logs/audit", async (
+                DateTimeOffset? from,
+                DateTimeOffset? to,
+                string? user,
+                string? action,
+                long? beforeId,
+                int? take,
+                AdminLogLogic logic,
+                CancellationToken cancellationToken) =>
+            Results.Ok(await logic.GetAuditLogAsync(from, to, user, action, beforeId, take, cancellationToken)));
+
+        admin.MapGet("/games", async (string? query, int? skip, int? take, GameHistoryLogic logic, CancellationToken cancellationToken) =>
+            Results.Ok(await logic.SearchForAdminAsync(query, skip ?? 0, take ?? 25, cancellationToken)));
+
+        admin.MapGet("/games/{id:guid}", async (Guid id, GameHistoryLogic logic, CancellationToken cancellationToken) =>
+            await logic.GetDetailForAdminAsync(id, cancellationToken) is { } detail
+                ? Results.Ok(detail)
+                : Results.NotFound(new { error = "Die Partie wurde nicht gefunden." }));
 
         return app;
     }

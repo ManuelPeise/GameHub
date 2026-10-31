@@ -101,3 +101,9 @@ public sealed record UserAdminRecord(
 
 /// <summary>One page of accounts and the total number of matches.</summary>
 public sealed record UserAdminPage(IReadOnlyList<UserAdminRecord> Items, int Total);
+
+/// <summary>Filter of the application log (all values optional).</summary>
+public sealed record AppLogFilter(DateTimeOffset? From, DateTimeOffset? To, string? MinimumLevel, string? Text, long? BeforeId, int Take);
+
+/// <summary>Filter of the audit log; <see cref="User"/> matches display name or e-mail of the acting/affected user.</summary>
+public sealed record AuditFilter(DateTimeOffset? From, DateTimeOffset? To, string? User, string? Action, long? BeforeId, int Take);

@@ -206,6 +206,16 @@ export type AdminDeleteUserRequest = {
   confirmed: boolean;
 };
 
+export type AdminGameDto = {
+  sessionId: string;
+  gameType: string;
+  mode: GameMode;
+  status: SessionStatus;
+  startedAt: string;
+  endedAt: string;
+  players: string[];
+};
+
 export type AdminUserDto = {
   id: string;
   displayName: string;
@@ -222,4 +232,37 @@ export type AdminUserDto = {
 export type AdminUserPageDto = {
   items: AdminUserDto[];
   total: number;
+};
+
+export type AppLogEntryDto = {
+  id: number;
+  timestamp: string;
+  level: string;
+  category: string;
+  message: string;
+  exception?: string | null;
+  eventId?: number | null;
+  properties?: string | null;
+};
+
+export type AppLogPageDto = {
+  items: AppLogEntryDto[];
+  nextBeforeId?: number | null;
+};
+
+export type AuditEntryDto = {
+  id: number;
+  createdAt: string;
+  userId?: string | null;
+  userName?: string | null;
+  action: string;
+  target?: string | null;
+  targetName?: string | null;
+  result: string;
+  details?: string | null;
+};
+
+export type AuditPageDto = {
+  items: AuditEntryDto[];
+  nextBeforeId?: number | null;
 };

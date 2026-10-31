@@ -173,4 +173,21 @@ public sealed class PauseHistoryAndMaintenanceTests
         Xunit.Assert.Null(await history.GetDetailAsync(Guid.NewGuid(), _sessionId, CancellationToken.None));
         Xunit.Assert.NotNull(await history.GetDetailAsync(_user, _sessionId, CancellationToken.None));
     }
+
+    [Xunit.Fact]
+    public async Task Admin_SeesEveryGame_AlsoRunningOnes_AndCanSearchByPlayer()
+    {
+        await Place(_humanSeat, 4);
+        var history = new GameHistoryLogic(_repository, new ReplayService(_modules));
+
+        var detail = await history.GetDetailForAdminAsync(_sessionId, CancellationToken.None);
+        Xunit.Assert.NotNull(detail);
+        Xunit.Assert.Single(detail.Actions);
+        Xunit.Assert.All(detail.Entry.Seats, seat => Xunit.Assert.False(seat.IsMe));
+
+        var found = await history.SearchForAdminAsync("alice", 0, 10, CancellationToken.None);
+        Xunit.Assert.Equal(_sessionId, Xunit.Assert.Single(found).SessionId);
+        Xunit.Assert.Contains("Alice", found[0].Players);
+        Xunit.Assert.Empty(await history.SearchForAdminAsync("niemand", 0, 10, CancellationToken.None));
+    }
 }

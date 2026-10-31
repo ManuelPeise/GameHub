@@ -29,11 +29,14 @@ import { getErrorMessage, sendRequest } from "../../hooks/apiClient";
 import { categoryLabels, parseKniffelState } from "../../games/kniffel/kniffel";
 import KniffelSheetTable from "../../games/kniffel/KniffelSheetTable";
 import Loading from "../../components/Loading";
+import { adminUrls } from "../admin/adminApi";
 import Page from "../../components/Page";
 import SectionCard from "../../components/SectionCard";
 
 type HistoryDetailPageProps = {
   sessionId: string;
+  /** Admin view (US-026): loads every game through the admin API. */
+  admin?: boolean;
 };
 
 const systemLabels: Record<string, string> = {
@@ -147,14 +150,14 @@ const StateView: React.FC<{ gameType: string; stateJson: string; seats: SeatDto[
 };
 
 /** Move log of a finished game with a step-by-step replay (forward and back). */
-const HistoryDetailPage: React.FC<HistoryDetailPageProps> = ({ sessionId }) => {
+const HistoryDetailPage: React.FC<HistoryDetailPageProps> = ({ sessionId, admin = false }) => {
   const [detail, setDetail] = React.useState<GameHistoryDetailDto | null>(null);
   const [error, setError] = React.useState<string | null>(null);
   const [step, setStep] = React.useState(0);
 
   React.useEffect(() => {
     let cancelled = false;
-    sendRequest<GameHistoryDetailDto>("GET", { serviceUrl: sessionUrls.historyDetail(sessionId) })
+    sendRequest<GameHistoryDetailDto>("GET", { serviceUrl: admin ? adminUrls.game(sessionId) : sessionUrls.historyDetail(sessionId) })
       .then((loaded) => {
         if (!cancelled && loaded) {
           setDetail(loaded);
@@ -169,7 +172,7 @@ const HistoryDetailPage: React.FC<HistoryDetailPageProps> = ({ sessionId }) => {
     return () => {
       cancelled = true;
     };
-  }, [sessionId]);
+  }, [sessionId, admin]);
 
   if (!detail) {
     return <Page title="Partieverlauf">{error ? <Alert severity="error">{error}</Alert> : <Loading />}</Page>;

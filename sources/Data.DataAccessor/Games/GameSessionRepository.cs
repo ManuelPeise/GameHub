@@ -442,6 +442,34 @@ public sealed class GameSessionRepository(GameDbContext database) : IGameSession
         return await LoadHistoryAsync(sessionIds, cancellationToken).ConfigureAwait(false);
     }
 
+    public async Task<IReadOnlyList<HistoryRecord>> SearchGamesAsync(string? query, int skip, int take, CancellationToken cancellationToken)
+    {
+        var sessions = database.GameSessions.AsNoTracking().Where(session => session.Status != SessionStatus.Lobby);
+
+        if (Guid.TryParse(query, out var sessionId))
+        {
+            sessions = sessions.Where(session => session.Id == sessionId);
+        }
+        else if (!string.IsNullOrWhiteSpace(query))
+        {
+            var pattern = $"%{query.Trim().Replace("%", "\\%", StringComparison.Ordinal).Replace("_", "\\_", StringComparison.Ordinal)}%";
+            var userIds = database.Users
+                .Where(user => EF.Functions.ILike(user.DisplayName, pattern) || EF.Functions.ILike(user.Email!, pattern))
+                .Select(user => (Guid?)user.Id);
+            sessions = sessions.Where(session => session.Seats.Any(seat => userIds.Contains(seat.UserId)));
+        }
+
+        var ids = await sessions
+            .OrderByDescending(session => session.UpdatedAt)
+            .Skip(skip)
+            .Take(take)
+            .Select(session => session.Id)
+            .ToListAsync(cancellationToken)
+            .ConfigureAwait(false);
+
+        return await LoadHistoryAsync(ids, cancellationToken).ConfigureAwait(false);
+    }
+
     public async Task<HistoryRecord?> GetHistoryRecordAsync(Guid sessionId, CancellationToken cancellationToken) =>
         (await LoadHistoryAsync([sessionId], cancellationToken).ConfigureAwait(false)).FirstOrDefault();
 

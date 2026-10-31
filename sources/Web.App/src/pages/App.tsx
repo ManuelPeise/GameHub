@@ -34,6 +34,11 @@ const HistoryDetailRoute = () => {
   return <HistoryDetailPage key={sessionId} sessionId={sessionId} />;
 };
 
+const AdminGameRoute = () => {
+  const { sessionId = "" } = useParams();
+  return <HistoryDetailPage key={sessionId} sessionId={sessionId} admin />;
+};
+
 /** All pages inside the common layout. */
 const App = () => (
   <Routes>
@@ -46,6 +51,7 @@ const App = () => (
       <Route path={pagePaths.emailConfirmed} element={<EmailConfirmedPage />} />
       <Route path={pagePaths.deleteAccount} element={<DeleteAccountPage />} />
       <Route path={pagePaths.admin} element={<AdminPage />} />
+      <Route path="/admin/games/:sessionId" element={<AdminGameRoute />} />
       <Route path={sessionPagePaths.newSession} element={<NewSessionPage />} />
       <Route path={sessionPagePaths.openLobbies} element={<OpenLobbiesPage />} />
       <Route path={`${sessionPagePaths.lobbyPrefix}:sessionId`} element={<SessionRoute />} />

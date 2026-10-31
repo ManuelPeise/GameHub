@@ -31,6 +31,45 @@ public sealed class GameHistoryLogic(IGameSessionRepository repository, ReplaySe
             return null;
         }
 
+        return await BuildDetailAsync(record, userId, cancellationToken).ConfigureAwait(false);
+    }
+
+    /// <summary>Administrators (US-026): every game except lobbies, also while it is running.</summary>
+    public async Task<GameHistoryDetailDto?> GetDetailForAdminAsync(Guid sessionId, CancellationToken cancellationToken)
+    {
+        var record = await repository.GetHistoryRecordAsync(sessionId, cancellationToken).ConfigureAwait(false);
+        return record is null || record.Status == SessionStatus.Lobby
+            ? null
+            : await BuildDetailAsync(record, Guid.Empty, cancellationToken).ConfigureAwait(false);
+    }
+
+    /// <summary>Administrators: search by session id or player name/e-mail.</summary>
+    public async Task<IReadOnlyList<global::Shared.Models.Administration.AdminGameDto>> SearchForAdminAsync(
+        string? query,
+        int skip,
+        int take,
+        CancellationToken cancellationToken)
+    {
+        var records = await repository
+            .SearchGamesAsync(query, Math.Max(0, skip), Math.Clamp(take, 1, MaxPageSize), cancellationToken)
+            .ConfigureAwait(false);
+        return
+        [
+            .. records.Select(record => new global::Shared.Models.Administration.AdminGameDto(
+                record.SessionId,
+                record.GameType,
+                record.Mode,
+                record.Status,
+                record.StartedAt,
+                record.EndedAt,
+                [.. record.Seats.OrderBy(seat => seat.Order).Select(seat => seat.DisplayName)])),
+        ];
+    }
+
+    private async Task<GameHistoryDetailDto?> BuildDetailAsync(HistoryRecord record, Guid userId, CancellationToken cancellationToken)
+    {
+        var sessionId = record.SessionId;
+
         var session = await repository.GetAsync(sessionId, cancellationToken).ConfigureAwait(false);
         if (session is null)
         {

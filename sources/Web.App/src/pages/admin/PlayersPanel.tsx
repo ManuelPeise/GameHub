@@ -34,15 +34,10 @@ import { roleNames } from "../../api/account";
 import { getErrorMessage, sendRequest } from "../../hooks/apiClient";
 import Loading from "../../components/Loading";
 import SectionCard from "../../components/SectionCard";
+import { adminUrls } from "./adminApi";
 
 const pageSize = 25;
 
-const adminUrls = {
-  users: "/api/admin/users",
-  lock: (id: string) => `/api/admin/users/${id}/lock`,
-  unlock: (id: string) => `/api/admin/users/${id}/unlock`,
-  remove: (id: string) => `/api/admin/users/${id}/delete`,
-};
 
 const formatDate = (value?: string | null) =>
   value ? new Date(value).toLocaleString("de-DE", { dateStyle: "medium", timeStyle: "short" }) : "noch nie";
