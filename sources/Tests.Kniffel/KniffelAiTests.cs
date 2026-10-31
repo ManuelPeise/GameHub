@@ -62,6 +62,7 @@ public sealed class KniffelAiTests
         var hard = Enumerable.Range(0, games).Average(seed => PlayGame(KniffelAiStrategy.Hard, seed));
 
         Xunit.Assert.True(hard > medium, $"Hard {hard:F1} should beat Medium {medium:F1}");
+        Xunit.Assert.True(hard >= 245, $"Hard plays near optimal (about 250 points), was {hard:F1}");
         Xunit.Assert.True(medium > easy, $"Medium {medium:F1} should beat Easy {easy:F1}");
     }
 

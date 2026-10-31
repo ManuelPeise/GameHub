@@ -22,6 +22,9 @@ internal static class DiceTable
     /// <summary>Per final result: whether it is a Kniffel (needs the joker rules).</summary>
     public static readonly bool[] IsKniffel;
 
+    /// <summary>Index of the empty kept set (all five dice are rolled).</summary>
+    public static readonly int EmptyKeep;
+
     private static readonly Dictionary<long, int> FinalIndex = [];
     private static readonly Dictionary<long, int> KeepIndex = [];
 
@@ -51,6 +54,7 @@ internal static class DiceTable
         SubKeeps = [.. Finals.Select(dice => Enumerable.Range(0, 32).Select(mask => KeepOf(dice, mask)).ToArray())];
         RawScores = [.. Finals.Select(dice => Enum.GetValues<Domain.KniffelCategory>().Select(category => Domain.KniffelScoring.RawScore(dice, category)).ToArray())];
         IsKniffel = [.. Finals.Select(dice => Domain.KniffelScoring.IsKniffel(dice))];
+        EmptyKeep = KeepIndex[Key([])];
     }
 
     public static int FinalOf(IReadOnlyList<int> dice) => FinalIndex[Key([.. dice.Order()])];

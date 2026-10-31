@@ -4,4 +4,9 @@
     <ProjectReference Include="..\Logic.Core\Logic.Core.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <!-- Expected values under optimal play, see Ai/KniffelValueTable.cs (generated, gzip). -->
+    <EmbeddedResource Include="Ai\kniffel-values.bin.gz" LogicalName="Logic.Kniffel.Ai.kniffel-values.bin.gz" />
+  </ItemGroup>
+
 </Project>

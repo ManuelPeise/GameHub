@@ -14,11 +14,13 @@ public sealed class KniffelAiStrategy(string difficulty, string version, IHoldPo
     public static KniffelAiStrategy Easy { get; } =
         new(AiDifficulties.Easy, "kniffel-easy-1", new FrequentFaceHoldPolicy(), new HighestScoreCategoryPolicy());
 
+    /// <summary>Medium: expected values over all rolls of the turn, categories valued by rules of thumb.</summary>
     public static KniffelAiStrategy Medium { get; } =
-        new(AiDifficulties.Medium, "kniffel-medium-1", ExpectedValueHoldPolicy.Medium, ValueCategoryPolicy.Medium);
+        new(AiDifficulties.Medium, "kniffel-medium-2", ExpectedValueHoldPolicy.Hard, ValueCategoryPolicy.Hard);
 
+    /// <summary>Hard: optimal play (expected value over all rolls and the rest of the game).</summary>
     public static KniffelAiStrategy Hard { get; } =
-        new(AiDifficulties.Hard, "kniffel-hard-1", ExpectedValueHoldPolicy.Hard, ValueCategoryPolicy.Hard);
+        new(AiDifficulties.Hard, "kniffel-hard-2", new OptimalHoldPolicy(lookAheadAllRolls: true), new OptimalCategoryPolicy());
 
     public string Difficulty => difficulty;
 
