@@ -33,6 +33,7 @@ import {
   type JoinSessionRequest,
   type SeatDto,
   type SessionDto,
+  gamesWithAi,
 } from "../api/sessions";
 import ConnectionBanner from "../components/ConnectionBanner";
 import Loading from "../components/Loading";
@@ -40,6 +41,7 @@ import Page from "../components/Page";
 import SectionCard from "../components/SectionCard";
 import StatusChip from "../components/StatusChip";
 import KniffelGame from "../games/kniffel/KniffelGame";
+import MuehleGame from "../games/muehle/MuehleGame";
 import TicTacToeGame from "../games/tictactoe/TicTacToeGame";
 
 type LobbyPageProps = {
@@ -179,7 +181,7 @@ const LobbyPage: React.FC<LobbyPageProps> = ({ sessionId, inviteCode }) => {
   const mySeat = seats.find((seat) => seat.id === session.mySeatId);
   const isLobby = session.status === "Lobby";
   const isOwner = isLobby && mySeat?.order === 0;
-  const hasBoard = (session.gameType === "TicTacToe" || session.gameType === "Kniffel") && !isLobby;
+  const hasBoard = ["TicTacToe", "Kniffel", "Muehle"].includes(session.gameType) && !isLobby;
   const inviteLink = session.inviteCode ? `${window.location.origin}${sessionPagePaths.joinPrefix}${session.inviteCode}` : null;
   const onChanged = (updated?: SessionDto) => (updated ? setSession(updated) : void reload());
   const isSingleplayerOpen = session.mode === "Singleplayer" && (session.status === "Running" || session.status === "Paused");
@@ -270,7 +272,7 @@ const LobbyPage: React.FC<LobbyPageProps> = ({ sessionId, inviteCode }) => {
             ))}
           </List>
 
-          {isOwner && (
+          {isOwner && gamesWithAi.includes(session.gameType) && (
             <Stack direction="row" spacing={1}>
               <TextField
                 select
@@ -320,6 +322,8 @@ const LobbyPage: React.FC<LobbyPageProps> = ({ sessionId, inviteCode }) => {
       {hasBoard &&
         (session.gameType === "Kniffel" ? (
           <KniffelGame session={session} onChanged={onChanged} />
+        ) : session.gameType === "Muehle" ? (
+          <MuehleGame session={session} onChanged={onChanged} />
         ) : (
           <TicTacToeGame session={session} onChanged={onChanged} />
         ))}

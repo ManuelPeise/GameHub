@@ -14,9 +14,7 @@ import ToggleButton from "@mui/material/ToggleButton";
 import ToggleButtonGroup from "@mui/material/ToggleButtonGroup";
 import Tooltip from "@mui/material/Tooltip";
 import Typography from "@mui/material/Typography";
-import Casino from "@mui/icons-material/Casino";
 import FlagOutlined from "@mui/icons-material/FlagOutlined";
-import GridOn from "@mui/icons-material/GridOn";
 import GroupsOutlined from "@mui/icons-material/GroupsOutlined";
 import PlayArrow from "@mui/icons-material/PlayArrow";
 import PlayCircleOutline from "@mui/icons-material/PlayCircleOutline";
@@ -25,24 +23,30 @@ import { getErrorMessage, sendRequest } from "../hooks/apiClient";
 import {
   difficultyOptions,
   gameNames,
+  gamesWithAi,
+  gameTypes,
+  playerCountText,
+  type GameType,
   sessionPagePaths,
   sessionUrls,
   type CreateSessionRequest,
   type SessionDto,
 } from "../api/sessions";
+import GameIcon from "../games/GameIcon";
 import Page from "../components/Page";
 import SectionCard from "../components/SectionCard";
 import StatusChip from "../components/StatusChip";
 
-type GameType = "TicTacToe" | "Kniffel";
 type Mode = "Singleplayer" | "Multiplayer";
 
 /** Create a game: choose game, mode, difficulty and (Tic-Tac-Toe) X or O. Lists own open games. */
 const NewSessionPage: React.FC = () => {
   const navigate = useNavigate();
   const [query] = useSearchParams();
-  const [gameType, setGameType] = React.useState<GameType>(query.get("game") === "Kniffel" ? "Kniffel" : "TicTacToe");
-  const [mode, setMode] = React.useState<Mode>(query.get("mode") === "Multiplayer" ? "Multiplayer" : "Singleplayer");
+  const [gameType, setGameType] = React.useState<GameType>(gameTypes.find((type) => type === query.get("game")) ?? "TicTacToe");
+  const [chosenMode, setMode] = React.useState<Mode>(query.get("mode") === "Multiplayer" ? "Multiplayer" : "Singleplayer");
+  const hasAi = gamesWithAi.includes(gameType);
+  const mode: Mode = hasAi ? chosenMode : "Multiplayer";
   const [difficulty, setDifficulty] = React.useState("Easy");
   const [preferredSeat, setPreferredSeat] = React.useState(0);
   const [isSubmitting, setIsSubmitting] = React.useState(false);
@@ -161,14 +165,18 @@ const NewSessionPage: React.FC = () => {
 
       <SectionCard>
         <Stack component="form" spacing={3} onSubmit={submit}>
-          {choice<GameType>("Spiel", gameType, setGameType, [
-            { value: "TicTacToe", label: <><GridOn fontSize="small" /> Tic-Tac-Toe</> },
-            { value: "Kniffel", label: <><Casino fontSize="small" /> Kniffel</> },
-          ])}
-          {choice<Mode>("Gegner", mode, setMode, [
-            { value: "Singleplayer", label: <><SmartToyOutlined fontSize="small" /> Gegen die KI</> },
-            { value: "Multiplayer", label: <><GroupsOutlined fontSize="small" /> Mit Freunden</> },
-          ])}
+          {choice<GameType>(
+            "Spiel",
+            gameType,
+            setGameType,
+            gameTypes.map((type) => ({ value: type, label: <><GameIcon gameType={type} fontSize="small" /> {gameNames[type]}</> })),
+          )}
+          {hasAi
+            ? choice<Mode>("Gegner", mode, setMode, [
+                { value: "Singleplayer", label: <><SmartToyOutlined fontSize="small" /> Gegen die KI</> },
+                { value: "Multiplayer", label: <><GroupsOutlined fontSize="small" /> Mit Freunden</> },
+              ])
+            : <Alert severity="info">{gameNames[gameType]} gibt es vorerst nur mit Freunden – die KI folgt bald.</Alert>}
           {mode === "Singleplayer" &&
             choice<string>(
               "Schwierigkeitsgrad",
@@ -184,8 +192,8 @@ const NewSessionPage: React.FC = () => {
             ])}
           {mode === "Multiplayer" && (
             <Typography color="text.secondary">
-              Du bekommst eine Lobby mit Einladungscode. {gameType === "Kniffel" ? "Kniffel spielen 2 bis 4 Personen" : "Tic-Tac-Toe spielen 2 Personen"};
-              in der Lobby kannst du auch KI-Mitspieler hinzufügen.
+              Du bekommst eine Lobby mit Einladungscode. {playerCountText[gameType]}
+              {hasAi ? "; in der Lobby kannst du auch KI-Mitspieler hinzufügen." : "."}
             </Typography>
           )}
           {error && <Alert severity="error">{error}</Alert>}

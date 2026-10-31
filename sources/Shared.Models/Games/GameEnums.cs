@@ -5,6 +5,7 @@ public static class GameTypes
 {
     public const string TicTacToe = "TicTacToe";
     public const string Kniffel = "Kniffel";
+    public const string Muehle = "Muehle";
 }
 
 public enum GameMode

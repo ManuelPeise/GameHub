@@ -9,13 +9,12 @@ import ListItemButton from "@mui/material/ListItemButton";
 import ListItemText from "@mui/material/ListItemText";
 import TextField from "@mui/material/TextField";
 import Typography from "@mui/material/Typography";
-import Casino from "@mui/icons-material/Casino";
-import GridOn from "@mui/icons-material/GridOn";
 import Search from "@mui/icons-material/Search";
 import SportsEsportsOutlined from "@mui/icons-material/SportsEsportsOutlined";
 import type { AdminGameDto } from "../../api/generated/contracts";
 import { gameNames } from "../../api/sessions";
 import { getErrorMessage, sendRequest } from "../../hooks/apiClient";
+import GameIcon from "../../games/GameIcon";
 import Loading from "../../components/Loading";
 import SectionCard from "../../components/SectionCard";
 import StatusChip from "../../components/StatusChip";
@@ -79,7 +78,7 @@ const GamesPanel: React.FC = () => {
             <ListItemButton key={game.sessionId} href={adminGamePath(game.sessionId)} divider sx={{ gap: 1, px: 1 }}>
               <ListItemAvatar sx={{ minWidth: 48 }}>
                 <Avatar sx={{ bgcolor: "background.default" }}>
-                  {game.gameType === "Kniffel" ? <Casino color="secondary" /> : <GridOn color="primary" />}
+                  <GameIcon gameType={game.gameType} color={game.gameType === "TicTacToe" ? "primary" : "secondary"} />
                 </Avatar>
               </ListItemAvatar>
               <ListItemText

@@ -28,6 +28,8 @@ import {
 import { getErrorMessage, sendRequest } from "../../hooks/apiClient";
 import { categoryLabels, parseKniffelState } from "../../games/kniffel/kniffel";
 import KniffelSheetTable from "../../games/kniffel/KniffelSheetTable";
+import MuehleBoard from "../../games/muehle/MuehleBoard";
+import { colorName, endReasonLabels, parseMuehleState, stonesOnBoard } from "../../games/muehle/muehle";
 import Loading from "../../components/Loading";
 import { adminUrls } from "../admin/adminApi";
 import Page from "../../components/Page";
@@ -88,7 +90,7 @@ const describeAction = (action: HistoryActionDto): string => {
   return `${action.actionType}${action.payloadJson ? ` ${action.payloadJson}` : ""}${random}`;
 };
 
-/** Read-only view of a game state: Tic-Tac-Toe board, Kniffel dice and score sheets, otherwise JSON. */
+/** Read-only view of a game state: Tic-Tac-Toe board, Kniffel dice and score sheets, Mühle board, otherwise JSON. */
 const StateView: React.FC<{ gameType: string; stateJson: string; seats: SeatDto[] }> = ({ gameType, stateJson, seats }) => {
   const state = parseJson(stateJson);
   const board = state?.board;
@@ -122,6 +124,25 @@ const StateView: React.FC<{ gameType: string; stateJson: string; seats: SeatDto[
           </Paper>
         ))}
       </Box>
+    );
+  }
+
+  const muehle = gameType === "Muehle" ? parseMuehleState(stateJson) : null;
+  if (muehle) {
+    return (
+      <Stack spacing={1.5} sx={{ maxWidth: 360, mx: "auto", width: "100%" }}>
+        <MuehleBoard board={muehle.board} lastMove={muehle.lastMove} />
+        <Stack direction="row" spacing={1} sx={{ justifyContent: "center", flexWrap: "wrap" }}>
+          {[0, 1].map((seat) => (
+            <Chip
+              key={seat}
+              variant="outlined"
+              label={`${colorName(seat)}: ${muehle.inHand[seat] > 0 ? `${muehle.inHand[seat]} zu setzen, ` : ""}${stonesOnBoard(muehle.board, seat)} auf dem Brett`}
+            />
+          ))}
+          {muehle.endReason && <Chip color="secondary" label={endReasonLabels[muehle.endReason] ?? muehle.endReason} />}
+        </Stack>
+      </Stack>
     );
   }
 

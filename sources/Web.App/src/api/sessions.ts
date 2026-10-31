@@ -50,6 +50,21 @@ export const sessionPagePaths = {
 export const gameNames: Record<string, string> = {
   TicTacToe: "Tic-Tac-Toe",
   Kniffel: "Kniffel",
+  Muehle: "Mühle",
+};
+
+/** Game types in the order they are offered. */
+export const gameTypes = ["TicTacToe", "Kniffel", "Muehle"] as const;
+export type GameType = (typeof gameTypes)[number];
+
+/** Games with an AI opponent (Mühle follows with US-035). */
+export const gamesWithAi: readonly string[] = ["TicTacToe", "Kniffel"];
+
+/** Player count shown when creating a lobby. */
+export const playerCountText: Record<string, string> = {
+  TicTacToe: "Tic-Tac-Toe spielen 2 Personen",
+  Kniffel: "Kniffel spielen 2 bis 4 Personen",
+  Muehle: "Mühle spielen 2 Personen",
 };
 
 export const difficultyOptions = [

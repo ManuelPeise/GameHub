@@ -39,6 +39,7 @@ public sealed class AiSettings
     {
         ["TicTacToe"] = "1",
         ["Kniffel"] = "1",
+        ["Muehle"] = "1",
     };
 }
 

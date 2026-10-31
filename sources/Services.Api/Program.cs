@@ -14,6 +14,7 @@ using Logic.Sessions.Statistics;
 using Logic.Shared.Interfaces;
 using Logic.Kniffel;
 using Logic.Kniffel.Ai;
+using Logic.Muehle;
 using Logic.TicTacToe;
 using Logic.TicTacToe.Ai;
 using Logic.Users;
@@ -62,6 +63,8 @@ builder.Services.AddSingleton<TicTacToeModule>();
 builder.Services.AddSingleton<IGameModule>(services => services.GetRequiredService<TicTacToeModule>());
 builder.Services.AddSingleton<KniffelModule>();
 builder.Services.AddSingleton<IGameModule>(services => services.GetRequiredService<KniffelModule>());
+builder.Services.AddSingleton<MuehleModule>();
+builder.Services.AddSingleton<IGameModule>(services => services.GetRequiredService<MuehleModule>());
 // One AI player per difficulty; a new level only needs a new strategy class and a line here.
 builder.Services.AddSingleton<IAiPlayer>(services =>
     new TicTacToeAiPlayer(services.GetRequiredService<TicTacToeModule>(), new RandomTicTacToeStrategy()));

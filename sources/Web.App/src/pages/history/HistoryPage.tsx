@@ -8,8 +8,6 @@ import ListItemAvatar from "@mui/material/ListItemAvatar";
 import ListItemButton from "@mui/material/ListItemButton";
 import ListItemText from "@mui/material/ListItemText";
 import Typography from "@mui/material/Typography";
-import Casino from "@mui/icons-material/Casino";
-import GridOn from "@mui/icons-material/GridOn";
 import {
   gameNames,
   outcomeLabels,
@@ -21,6 +19,7 @@ import { getErrorMessage, sendRequest } from "../../hooks/apiClient";
 import Loading from "../../components/Loading";
 import Page from "../../components/Page";
 import SectionCard from "../../components/SectionCard";
+import GameIcon from "../../games/GameIcon";
 
 const pageSize = 20;
 
@@ -117,11 +116,7 @@ const HistoryPage: React.FC = () => {
                 >
                   <ListItemAvatar sx={{ minWidth: 48 }}>
                     <Avatar sx={{ bgcolor: "background.default" }}>
-                      {entry.gameType === "Kniffel" ? (
-                        <Casino color="secondary" />
-                      ) : (
-                        <GridOn color="primary" />
-                      )}
+                      <GameIcon gameType={entry.gameType} color={entry.gameType === "TicTacToe" ? "primary" : "secondary"} />
                     </Avatar>
                   </ListItemAvatar>
                   <ListItemText

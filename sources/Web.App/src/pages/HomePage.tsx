@@ -18,7 +18,8 @@ import PlayCircleOutline from "@mui/icons-material/PlayCircleOutline";
 import SmartToyOutlined from "@mui/icons-material/SmartToyOutlined";
 import GroupsOutlined from "@mui/icons-material/GroupsOutlined";
 import { pagePaths } from "../api/account";
-import { gameNames, sessionPagePaths, sessionUrls, type OpenLobbyDto, type SessionDto } from "../api/sessions";
+import { MuehleIcon } from "../games/GameIcon";
+import { gameNames, gamesWithAi, sessionPagePaths, sessionUrls, type OpenLobbyDto, type SessionDto } from "../api/sessions";
 import { useCurrentUser } from "../app/CurrentUser";
 import Loading from "../components/Loading";
 import OpenLobbiesSection from "../components/OpenLobbiesSection";
@@ -39,6 +40,12 @@ const games = [
     icon: <Casino sx={{ fontSize: 44 }} />,
     gradient: "linear-gradient(135deg, #ff8a00 0%, #ff5f8f 100%)",
     text: "Fünf Würfel, drei Würfe, 13 Kategorien – allein gegen die KI oder mit bis zu vier Spielern.",
+  },
+  {
+    type: "Muehle",
+    icon: <MuehleIcon sx={{ fontSize: 44 }} />,
+    gradient: "linear-gradient(135deg, #22b45a 0%, #0ea5e9 100%)",
+    text: "Der Brettspiel-Klassiker: Steine setzen, ziehen, Mühlen bauen – mit Freunden, die KI folgt bald.",
   },
 ] as const;
 
@@ -126,10 +133,10 @@ const HomePage: React.FC = () => {
 
   if (user === null) {
     return (
-      <Page title="Willkommen bei GameHub" subtitle="Tic-Tac-Toe und Kniffel – gegen die KI oder mit Freunden.">
+      <Page title="Willkommen bei GameHub" subtitle="Tic-Tac-Toe, Kniffel und Mühle – gegen die KI oder mit Freunden.">
         <Grid container spacing={2}>
           {games.map((game) => (
-            <Grid key={game.type} size={{ xs: 12, sm: 6 }}>
+            <Grid key={game.type} size={{ xs: 12, sm: 6, md: 4 }}>
               <Card sx={{ height: "100%" }}>
                 <CardContent>
                   <Stack direction="row" spacing={2} sx={{ alignItems: "center", mb: 1 }}>
@@ -158,7 +165,7 @@ const HomePage: React.FC = () => {
     <Page title={`Hallo, ${user.displayName}!`} subtitle="Worauf hast du Lust?" width="lg">
       <Grid container spacing={2}>
         {games.map((game) => (
-          <Grid key={game.type} size={{ xs: 12, md: 6 }}>
+          <Grid key={game.type} size={{ xs: 12, sm: 6, md: 4 }}>
             <Card sx={{ height: "100%", display: "flex", flexDirection: "column" }}>
               <CardContent sx={{ flexGrow: 1 }}>
                 <Stack direction="row" spacing={2} sx={{ alignItems: "center", mb: 1 }}>
@@ -168,10 +175,17 @@ const HomePage: React.FC = () => {
                 <Typography color="text.secondary">{game.text}</Typography>
               </CardContent>
               <CardActions sx={{ p: 2, pt: 0, gap: 1, flexWrap: "wrap" }}>
-                <Button href={newSessionLink(game.type, "Singleplayer")} variant="contained" color={game.type === "Kniffel" ? "secondary" : "primary"} startIcon={<SmartToyOutlined />}>
-                  Gegen die KI
-                </Button>
-                <Button href={newSessionLink(game.type, "Multiplayer")} variant="outlined" startIcon={<GroupsOutlined />}>
+                {gamesWithAi.includes(game.type) && (
+                  <Button href={newSessionLink(game.type, "Singleplayer")} variant="contained" color={game.type === "Kniffel" ? "secondary" : "primary"} startIcon={<SmartToyOutlined />}>
+                    Gegen die KI
+                  </Button>
+                )}
+                <Button
+                  href={newSessionLink(game.type, "Multiplayer")}
+                  variant={gamesWithAi.includes(game.type) ? "outlined" : "contained"}
+                  color={gamesWithAi.includes(game.type) ? "primary" : "success"}
+                  startIcon={<GroupsOutlined />}
+                >
                   Mit Freunden
                 </Button>
               </CardActions>

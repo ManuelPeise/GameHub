@@ -7,11 +7,10 @@ import ListItem from "@mui/material/ListItem";
 import ListItemAvatar from "@mui/material/ListItemAvatar";
 import ListItemText from "@mui/material/ListItemText";
 import Typography from "@mui/material/Typography";
-import Casino from "@mui/icons-material/Casino";
-import GridOn from "@mui/icons-material/GridOn";
 import GroupsOutlined from "@mui/icons-material/GroupsOutlined";
 import { gameNames, sessionUrls, type OpenLobbyDto } from "../api/sessions";
 import { getErrorMessage, sendRequest } from "../hooks/apiClient";
+import GameIcon from "../games/GameIcon";
 import Loading from "./Loading";
 import SectionCard from "./SectionCard";
 
@@ -62,8 +61,8 @@ const OpenLobbiesSection: React.FC<OpenLobbiesSectionProps> = ({ onJoin, disable
           {lobbies.map((lobby) => (
             <ListItem key={lobby.id} divider disableGutters sx={{ gap: 1.5, flexWrap: "wrap" }}>
               <ListItemAvatar sx={{ minWidth: 0 }}>
-                <Avatar sx={{ bgcolor: lobby.gameType === "Kniffel" ? "secondary.main" : "primary.main" }}>
-                  {lobby.gameType === "Kniffel" ? <Casino /> : <GridOn />}
+                <Avatar sx={{ bgcolor: lobby.gameType === "TicTacToe" ? "primary.main" : lobby.gameType === "Muehle" ? "success.main" : "secondary.main" }}>
+                  <GameIcon gameType={lobby.gameType} />
                 </Avatar>
               </ListItemAvatar>
               <ListItemText

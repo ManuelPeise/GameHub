@@ -20,13 +20,13 @@ import EmojiEventsOutlined from "@mui/icons-material/EmojiEventsOutlined";
 import InsightsOutlined from "@mui/icons-material/InsightsOutlined";
 import StarOutline from "@mui/icons-material/StarOutline";
 import type { GameMode, LeaderboardDto, PlayerStatisticsDto, StatisticsRowDto } from "../api/generated/contracts";
-import { difficultyOptions, gameNames } from "../api/sessions";
+import { difficultyOptions, gameNames, gameTypes } from "../api/sessions";
 import { getErrorMessage, sendRequest } from "../hooks/apiClient";
 import Loading from "../components/Loading";
 import Page from "../components/Page";
 import SectionCard from "../components/SectionCard";
 
-const games = ["TicTacToe", "Kniffel"] as const;
+const games = gameTypes;
 type Game = (typeof games)[number];
 type Period = "all" | "30d";
 

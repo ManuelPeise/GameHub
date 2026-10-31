@@ -16,6 +16,7 @@ export type SessionStatus = "Lobby" | "Running" | "Paused" | "Finished" | "Abort
 export const GameTypes = {
   TicTacToe: "TicTacToe",
   Kniffel: "Kniffel",
+  Muehle: "Muehle",
 } as const;
 
 export type AddAiSeatRequest = {
